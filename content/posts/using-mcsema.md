@@ -135,7 +135,7 @@ remill-clang-9 -o cat.recompiled cat.recompiled.bc -Wl,--section-start=.section_
 
 Alright, let’s give it a shot:
 
-```x
+```
 ./cat.recompiled helloworld.txt
 Segmentation fault (core dumped)
 ```

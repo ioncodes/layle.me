@@ -72,7 +72,7 @@ Copy
 
 This pattern translates to the following sequence of chars:
 
-```x
+```
 +PinnedPublicKeys="steam.live.bhvrdbd.com:++MBgDH5WGvL9Bcn5Be30cRcL0f5O+NyoXuWtQdX1aI=;EXrEe/XXp1o4/nVmcqCaG/BSgVR3OzhVUG8/X4kRCCU="
 
 ```
