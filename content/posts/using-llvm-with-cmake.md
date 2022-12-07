@@ -1,6 +1,7 @@
 ---
 author: "Layle"
 slug: "using-llvm-with-cmake"
+aliases: ["/using-llvm-with-cmake"]
 title: "LLVM with CMake: It's easier than you'd think!"
 summary: "Have you ever wondered how you can set up LLVM using CMake? It’s actually easier than you might think. All thanks to an amazing fork of a project called hunter."
 tags: ["llvm", "c++", "cmake"]

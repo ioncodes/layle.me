@@ -1,6 +1,7 @@
 ---
 author: "Layle"
 slug: "breaking-dead-by-daylight"
+aliases: ["/breaking-dead-by-daylight"]
 title: "Breaking Dead by Daylight without process interaction"
 summary: "Is it possible to cheat in a game without any process interaction? Let's find out."
 tags: ["game-hacking", "reverse-engineering", "man-in-the-middle"]
