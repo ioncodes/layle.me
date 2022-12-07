@@ -123,7 +123,7 @@ p > code, li > a {
     color: #383a42 !important;
 }
 
-.post-content code {
+.chroma .lntable {
     /* font-size: .78em !important;
     line-height: 1.5 !important;
     padding: 4px 6px !important;
