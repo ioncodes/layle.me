@@ -2,35 +2,35 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
     <title>c&#43;&#43; on Layle&#39;s Lair</title>
-    <link>https://blog.layle.dev/tags/c&#43;&#43;/</link>
+    <link>https://layle.me/tags/c&#43;&#43;/</link>
     <description>Recent content in c&#43;&#43; on Layle&#39;s Lair</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Mon, 23 Aug 2021 06:59:00 +0000</lastBuildDate><atom:link href="https://blog.layle.dev/tags/c++/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Mon, 23 Aug 2021 06:59:00 +0000</lastBuildDate><atom:link href="https://layle.me/tags/c++/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Instrumenting binaries using revng and LLVM</title>
-      <link>https://blog.layle.dev/posts/instrumentation-with-revng/</link>
+      <link>https://layle.me/posts/instrumentation-with-revng/</link>
       <pubDate>Mon, 23 Aug 2021 06:59:00 +0000</pubDate>
       
-      <guid>https://blog.layle.dev/posts/instrumentation-with-revng/</guid>
+      <guid>https://layle.me/posts/instrumentation-with-revng/</guid>
       <description>One of the first things I ever wanted to implement was an import hooking library that placed the hooks by rewriting the calls statically instead of hooking the functions in-memory.</description>
     </item>
     
     <item>
       <title>LLVM with CMake: It&#39;s easier than you&#39;d think!</title>
-      <link>https://blog.layle.dev/posts/using-llvm-with-cmake/</link>
+      <link>https://layle.me/posts/using-llvm-with-cmake/</link>
       <pubDate>Sun, 22 Aug 2021 22:00:00 +0000</pubDate>
       
-      <guid>https://blog.layle.dev/posts/using-llvm-with-cmake/</guid>
+      <guid>https://layle.me/posts/using-llvm-with-cmake/</guid>
       <description>Have you ever wondered how you can set up LLVM using CMake? It’s actually easier than you might think. All thanks to an amazing fork of a project called hunter.</description>
     </item>
     
     <item>
       <title>RACEAC: Breaking Dead by Daylight&#39;s integrity checks</title>
-      <link>https://blog.layle.dev/posts/raceac/</link>
+      <link>https://layle.me/posts/raceac/</link>
       <pubDate>Thu, 03 Jun 2021 22:00:00 +0000</pubDate>
       
-      <guid>https://blog.layle.dev/posts/raceac/</guid>
+      <guid>https://layle.me/posts/raceac/</guid>
       <description>In an attempt to stop people from cheating by modifying game files, Dead by Daylight received an update that introduced integrity checks for the pak files/assets. Cheating was no longer possible. Unless…?</description>
     </item>
     

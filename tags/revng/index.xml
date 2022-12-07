@@ -2,17 +2,17 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
     <title>revng on Layle&#39;s Lair</title>
-    <link>https://blog.layle.dev/tags/revng/</link>
+    <link>https://layle.me/tags/revng/</link>
     <description>Recent content in revng on Layle&#39;s Lair</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Mon, 23 Aug 2021 06:59:00 +0000</lastBuildDate><atom:link href="https://blog.layle.dev/tags/revng/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Mon, 23 Aug 2021 06:59:00 +0000</lastBuildDate><atom:link href="https://layle.me/tags/revng/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Instrumenting binaries using revng and LLVM</title>
-      <link>https://blog.layle.dev/posts/instrumentation-with-revng/</link>
+      <link>https://layle.me/posts/instrumentation-with-revng/</link>
       <pubDate>Mon, 23 Aug 2021 06:59:00 +0000</pubDate>
       
-      <guid>https://blog.layle.dev/posts/instrumentation-with-revng/</guid>
+      <guid>https://layle.me/posts/instrumentation-with-revng/</guid>
       <description>One of the first things I ever wanted to implement was an import hooking library that placed the hooks by rewriting the calls statically instead of hooking the functions in-memory.</description>
     </item>
     

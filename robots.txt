@@ -1,3 +1,3 @@
 User-agent: *
 Disallow:
-Sitemap: https://blog.layle.dev/sitemap.xml
+Sitemap: https://layle.me/sitemap.xml

@@ -2,26 +2,26 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
     <title>reverse-engineering on Layle&#39;s Lair</title>
-    <link>https://blog.layle.dev/tags/reverse-engineering/</link>
+    <link>https://layle.me/tags/reverse-engineering/</link>
     <description>Recent content in reverse-engineering on Layle&#39;s Lair</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Thu, 03 Jun 2021 22:00:00 +0000</lastBuildDate><atom:link href="https://blog.layle.dev/tags/reverse-engineering/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Thu, 03 Jun 2021 22:00:00 +0000</lastBuildDate><atom:link href="https://layle.me/tags/reverse-engineering/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>RACEAC: Breaking Dead by Daylight&#39;s integrity checks</title>
-      <link>https://blog.layle.dev/posts/raceac/</link>
+      <link>https://layle.me/posts/raceac/</link>
       <pubDate>Thu, 03 Jun 2021 22:00:00 +0000</pubDate>
       
-      <guid>https://blog.layle.dev/posts/raceac/</guid>
+      <guid>https://layle.me/posts/raceac/</guid>
       <description>In an attempt to stop people from cheating by modifying game files, Dead by Daylight received an update that introduced integrity checks for the pak files/assets. Cheating was no longer possible. Unless…?</description>
     </item>
     
     <item>
       <title>Breaking Dead by Daylight without process interaction</title>
-      <link>https://blog.layle.dev/posts/breaking-dead-by-daylight/</link>
+      <link>https://layle.me/posts/breaking-dead-by-daylight/</link>
       <pubDate>Tue, 14 Apr 2020 22:00:00 +0000</pubDate>
       
-      <guid>https://blog.layle.dev/posts/breaking-dead-by-daylight/</guid>
+      <guid>https://layle.me/posts/breaking-dead-by-daylight/</guid>
       <description>Is it possible to cheat in a game without any process interaction? Let&amp;rsquo;s find out.</description>
     </item>
     
