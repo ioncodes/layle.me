@@ -124,8 +124,8 @@ p > code, li > a {
 }
 
 .post-content code {
-    /* font-size: .78em !important;
-    line-height: 1.5 !important;
-    padding: 4px 6px !important;
-    margin: auto 4px !important;*/
+    text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+    -moz-text-size-adjust: 100%;
+    -webkit-text-size-adjust: 100%;
 }
