@@ -1,4 +1,4 @@
-baseURL: https://blog.layle.dev
+baseURL: https://layle.me
 languageCode: en-us
 title: Layle's Lair
 theme: "PaperMod"
@@ -21,7 +21,7 @@ outputs:
 params:
   env: production
   title: "Layle's Lair"
-  description: "A place where a man gone mad gets to share his chaotic passion for everything."
+  description: "A place where a man gone mad gets to share his chaotic thoughts."
   keywords: [Blog, Security, Reverse Engineering, Exploit Development, Compilers, Math, Emulators]
   author: Layle
   # author: ["Me", "You"] # multiple authors
@@ -75,7 +75,7 @@ params:
     hiddenInSingle: true # hide on single page
 
   editPost:
-    URL: "https://github.com/ioncodes/layle.me/content"
+    URL: "https://github.com/ioncodes/layle.me/blob/master/content"
     Text: "Suggest Changes" # edit text
     appendFilePath: true # to append file path to Edit link
 
