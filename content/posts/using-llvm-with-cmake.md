@@ -169,7 +169,7 @@ cmake ..
 
 Keep in mind that this might take a while if it’s your first time configuring LLVM using hunter. Now that we have everything set up we can go ahead and create a simple example.
 
-## Hello world LLVM!
+## Hello ~world~ LLVM!
 
 Let’s jump into our C++ source file `main.cpp`. We should first define a raw skeleton. That is, the includes, types we need and our `main` function:
 
