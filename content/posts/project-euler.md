@@ -9,10 +9,10 @@ draft: true
 ---
 
 
-I'd like to start with a quick disclaimer: I'm neither a mathematician nor did I take any university classes on these topics. Please do let me know if I get something wrong or if there's a better way to solve these problems. I'll be talking about what I was able to learn from different resources online and what I was able to figure out myself.
+I'd like to start with a quick disclaimer: I'm neither a mathematician nor did I take any classes on these topics. Please do let me know if I get something wrong or if there's a better way to solve these problems. I'll be talking about what I was able to learn from different resources online and what I was able to figure out myself.
 
 
-# Problem 1: Multiples of 3 or 5
+## Problem 1: Multiples of 3 or 5
 
 > If we list all the natural numbers below 10 that are multiples of 3 or 5, we get 3, 5, 6 and 9. The sum of these multiples is 23.  
 > Find the sum of all the multiples of 3 or 5 below 1000.
@@ -46,11 +46,11 @@ However, we are only interested in all terms between `1..10` - at least for now.
 
 Since this is an arithmetic sequence, and a arithmetic sequence dictates that the difference between each term must be constant, we can simply deduce that:
 
-$$n = m / d$$
+$$n = \lfloor\frac{x_n}{m}\rfloor$$
 
-Where $n$ is the number of terms in the sequence, $x_n$ (10 in our example) is the biggest number and $m$ (the multiple 3) is the difference between each term. However, keep in mind that we are operating on *natural* numbers, this means $\frac{10}{3} = 3$. Let's apply this to our example:
+Where $n$ is the number of terms in the sequence, $x_n$ (10 in our example) is the desired, biggest number and $m$ (the multiple 3) is the difference between each term. However, keep in mind that we are operating on *natural* numbers, this means $\frac{10}{3} = 3$. In math we denote `floor` functions as $\lfloor x \rfloor$ which is synonymous with `floor(x)`. Let's apply this to our example:
 
-$$\sum_{i=1}^{\frac{x_n}{m}} 3i = 3 + 6 + 9$$
+$$\sum_{i=1}^{\lfloor\frac{x_n}{m}\rfloor} 3i = 3 + 6 + 9$$
 
 With this information at hand we can now go back and rewrite the formula for the sequence of multiples of 3 and 5, this time we'll use the range `1..15`:
 
@@ -80,24 +80,30 @@ Prelude> sum [x | x <- [1..15], x `mod` 3 == 0 || x `mod` 5 == 0]
 
 We can now apply this to the original problem:
 
-$$S = \sum_{i=1}^{\frac{999}{3}} 3i + \sum_{i=1}^{\frac{999}{5}} 5i - \sum_{i=1}^{\frac{999}{15}} 15i$$
+$$S = \sum_{i=1}^{\frac{999}{3}} 3i + \sum_{i=1}^{\lfloor\frac{999}{5}\rfloor} 5i - \sum_{i=1}^{\lfloor\frac{999}{15}\rfloor} 15i$$
 
-With this in mind we can try to abstract the sum as a function, where $m$ is the multiple and $n$ is the upper range:
+With this in mind we can try to abstract the sum as a function, where $m$ is the multiple and $n$ is the upper bounding value (999 for the original problem):
 
-$$f(m, n) = \sum_{i=1}^{\frac{n}{m}} mi$$
+$$f(n, m) = \sum_{i=1}^{\lfloor\frac{n}{m}\rfloor} mi$$
 
 Or even more concise:
 
-$$f(m, n) = \frac{m*\frac{n}{m}*(\frac{n}{m}+1)}{2} = \frac{n * (\frac{n}{m} + 1)}{2}$$
+$$f(n, m) = m * (\lfloor\frac{\lfloor\frac{n}{m}\rfloor * (\lfloor\frac{n}{m}\rfloor + 1)}{2}\rfloor)$$
 
-Let's implement this using Haskell:
+As mentioned before, we must make sure that we stay within a natural room while performing our calculations, therefore we must make sure to floor all fractals.
+
+Let's implement this using Haskell and Julia respectively:
 
 ```haskell
-ghci> sum' m n = m * (n `div` m * (n `div` m + 1) `div` 2)
-ghci> sum' 3 999 + sum' 5 999 - sum' 15 999
+ghci> sum' n m = m * (((n `div` m) * ((n `div` m) + 1)) `div` 2)
+ghci> sum' 999 3 + sum' 999 5 - sum' 999 15
 233168
 ```
 
-<!-- % ```julia
-% S(m, n) = m * (div(n, m) * div(n, m + 1) ÷ 2)
-% ``` -->
+```julia
+julia> sum(n, m) = m * (((n ÷ m) * ((n ÷ m) + 1)) ÷ 2)
+sum (generic function with 1 method)
+
+julia> sum(999, 3) + sum(999, 5) - sum(999, 15)
+233168
+```
