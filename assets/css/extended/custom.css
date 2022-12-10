@@ -103,7 +103,7 @@ code {
     --hljs-bg: #f5f5f5 !important; /* f5f5f5 is the home bg color */
 }
 
-p > code, li > a {
+li > code, p > code, li > a {
     --code-bg: #eef1ff !important;
 }
 
