@@ -6,7 +6,43 @@
     <description>Recent content in Tags on Layle&#39;s Lair</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Mon, 23 Aug 2021 06:59:00 +0000</lastBuildDate><atom:link href="https://layle.me/tags/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Mon, 08 May 2023 08:00:00 +0000</lastBuildDate><atom:link href="https://layle.me/tags/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>game-hacking</title>
+      <link>https://layle.me/tags/game-hacking/</link>
+      <pubDate>Mon, 08 May 2023 08:00:00 +0000</pubDate>
+      
+      <guid>https://layle.me/tags/game-hacking/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>man-in-the-middle</title>
+      <link>https://layle.me/tags/man-in-the-middle/</link>
+      <pubDate>Mon, 08 May 2023 08:00:00 +0000</pubDate>
+      
+      <guid>https://layle.me/tags/man-in-the-middle/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>steam</title>
+      <link>https://layle.me/tags/steam/</link>
+      <pubDate>Mon, 08 May 2023 08:00:00 +0000</pubDate>
+      
+      <guid>https://layle.me/tags/steam/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>steam-session-tickets</title>
+      <link>https://layle.me/tags/steam-session-tickets/</link>
+      <pubDate>Mon, 08 May 2023 08:00:00 +0000</pubDate>
+      
+      <guid>https://layle.me/tags/steam-session-tickets/</guid>
+      <description></description>
+    </item>
+    
     <item>
       <title>c&#43;&#43;</title>
       <link>https://layle.me/tags/c&#43;&#43;/</link>
@@ -71,29 +107,11 @@
     </item>
     
     <item>
-      <title>game-hacking</title>
-      <link>https://layle.me/tags/game-hacking/</link>
-      <pubDate>Thu, 03 Jun 2021 22:00:00 +0000</pubDate>
-      
-      <guid>https://layle.me/tags/game-hacking/</guid>
-      <description></description>
-    </item>
-    
-    <item>
       <title>reverse-engineering</title>
       <link>https://layle.me/tags/reverse-engineering/</link>
       <pubDate>Thu, 03 Jun 2021 22:00:00 +0000</pubDate>
       
       <guid>https://layle.me/tags/reverse-engineering/</guid>
-      <description></description>
-    </item>
-    
-    <item>
-      <title>man-in-the-middle</title>
-      <link>https://layle.me/tags/man-in-the-middle/</link>
-      <pubDate>Tue, 14 Apr 2020 22:00:00 +0000</pubDate>
-      
-      <guid>https://layle.me/tags/man-in-the-middle/</guid>
       <description></description>
     </item>
     
