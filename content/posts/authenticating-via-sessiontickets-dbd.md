@@ -59,7 +59,7 @@ Actually grabbing a valid cookie will involve two things:
 1. Requesting a signed session ticket (done)
 2. Knowing the Kraken Secret Key (or not, actually; you'll see)
 
-To this day I actually don't know what Kraken is, I just always found a way around it and in most cases it's not needed anyways. I have multiple SSL pinning bypasses to burn, so here is the secret: `X-Kraken-Content-Secret-Key: c6KYurOiikoX5kir08IRt1Rpuz5IIey7VAmTlTsG6hY=`. I don't think it's actually of any value as it sounded like some logging thing from my 1min research based on the game's strings. Anyways, shoot me a DM if it ever changes and you need it for whatever reason! Likewise, if you know what Kraken actually is, please do let me know on Discord (`Layle#6969`) or via [Twitter](https://twitter.com/layle_ctf).
+To this day I actually don't know what Kraken is, I just always found a way around it and in most cases it's not needed anyways. I have multiple SSL pinning bypasses (by "bypass" I refer to the practice of disabling the check altogether by either modifying the games memory or through some other method such as modifying the *.pak files) to burn, so here is the secret: `X-Kraken-Content-Secret-Key: c6KYurOiikoX5kir08IRt1Rpuz5IIey7VAmTlTsG6hY=`. I don't think it's actually of any value as it sounded like some logging thing from my 1min research based on the game's strings. Anyways, shoot me a DM if it ever changes and you need it for whatever reason! Likewise, if you know what Kraken actually is, please do let me know on Discord (`Layle#6969`) or via [Twitter](https://twitter.com/layle_ctf).
 
 That being said, you don't actually need it to grab a valid `bhvrSession`. You'll usually see the following set of headers:
 
