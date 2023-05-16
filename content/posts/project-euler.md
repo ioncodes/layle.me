@@ -2,7 +2,7 @@
 author: "Layle"
 slug: "project-euler"
 title: "Taking a shot at Project Euler"
-summary: "In an attempt to stop people from cheating by modifying game files, Dead by Daylight received an update that introduced integrity checks for the pak files/assets. Cheating was no longer possible. Unless…?"
+summary: "Recently I found out about Project Euler and figured I'll give it a shot with the goal to learn new things about math."
 tags: ["math", "project-euler"]
 date: 2022-12-07T22:00:00Z
 draft: true
