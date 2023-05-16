@@ -84,6 +84,9 @@ Congrats! You're now a proud owner of a `bhvrSession` and can do whatever you wa
 
 ![](/images/dbd/fullprofile.png)
 
+## Notes
+As an additional note I can add that this generally works for most Steam online games I've seen so far. Endpoints will obviously differ but the general idea is still the same. Some other games have multiple forms of tickets and/or tokens to generate an authentication cookie/token, one such example would be Deceive Inc. which requires a Steam session ticket along with some other token (I don't have specifics for this example).
+
 ## Resources
 If you're reading this, chances are you are interested in my other articles and repositories:
 * [Code of my public Dead by Daylight research](https://github.com/ioncodes/DeadByDaylight)
