@@ -4,7 +4,7 @@ slug: "authenticating-via-sessiontickets-dbd"
 title: "Authenticating to Dead by Daylight servers via Steam Session Tickets"
 summary: "In this post we'll be looking into grabbing a valid bhvrSession cookie without SSL sniffing"
 tags: ["game-hacking", "man-in-the-middle", "steam", "steam-session-tickets"]
-date: 2023-05-08T17:00:00Z
+date: 2023-05-08T08:00:00Z
 draft: false
 ---
 
@@ -83,3 +83,9 @@ Now let's get back to grabbing the cookie. It is simply a matter of creating 1 H
 Congrats! You're now a proud owner of a `bhvrSession` and can do whatever you want again (data mining, [grabbing your inventory and decrypting it](https://layle.me/posts/breaking-dead-by-daylight/), pushing inventories, you name it...). Here's an example of me grabbing my profile data (`FullProfile` via `/api/v1/players/me/states/FullProfile/binary`):
 
 ![](/images/dbd/fullprofile.png)
+
+## Resources
+If you're reading this, chances are you are interested in my other articles and repositories:
+* [Code of my public Dead by Daylight research](https://github.com/ioncodes/DeadByDaylight)
+* [Breaking Dead by Daylight without process interaction](https://layle.me/posts/breaking-dead-by-daylight/)
+* [RACEAC: Breaking Dead by Daylight's integrity checks](https://layle.me/posts/raceac/)
