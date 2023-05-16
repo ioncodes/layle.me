@@ -354,3 +354,75 @@ real    0m0.301s
 user    0m0.385s
 sys     0m0.076s
 ```
+
+## Problem 9: Special Pythagorean triplet
+
+> A Pythagorean triplet is a set of three natural numbers, a < b < c, for which,  
+> a2 + b2 = c2  
+> For example, 32 + 42 = 9 + 16 = 25 = 52.  
+> There exists exactly one Pythagorean triplet for which a + b + c = 1000.  
+> Find the product abc.
+
+My initial CTF instincts told me to just solve it with SMT via z3, which I did:
+
+```python
+>>> from z3 import *
+>>> a, b, c = Int("a"), Int("b"), Int("c")
+>>> solve(a**2 + b**2 == c**2, a + b + c == 1000, a > 0, b > 0, c > 0)
+[b = 375, c = 425, a = 200]
+>>> 375 * 425 * 200
+31875000
+```
+
+However, I wanted to solve it "properly" using a mathematical approach as well, which is actually quite easy using Euclid's formula:
+
+$$
+\begin{aligned}
+a &= 2mn \cr
+b &= m^2 - n^2 \cr
+c &= m^2 + n^2
+\end{aligned}
+$$
+
+The problem states that $a + b + c = 1000$. Let's solve that equation!
+
+$$
+\begin{aligned}
+2mn + m^2 - n^2 + m^2 + n^2 &= 1000 \cr
+2mn + m^2 + m^2             &= 1000 \cr
+2mn + 2m^2                  &= 1000 \cr
+mn + m^2                    &= 500
+\end{aligned}
+$$
+
+If we assume $m > n$ and $m, n \in{\mathbb{N}}$ that gives us quickly $m = 20$ and $n = 5$. That means we can plug it into the formula mentioned earlier and get our values:
+
+$$
+\begin{aligned}
+a &= 2 * 20 * 5 &= 200 \cr
+b &= 20^2 - 5^2 &= 375 \cr
+c &= 20^2 + 5^2 &= 425
+\end{aligned}
+$$
+
+Which in turn we can easily automate using Python. We'll use the SMT solver z3 to solve for $m$ and $n$.
+
+```python
+from z3 import *
+
+# solve euclid
+m, n = Int("m"), Int("n")
+solver = Solver()
+solver.add(m*n + m**2 == 500, m > 0, n > 0, m > n)
+solver.check()
+model = solver.model()
+m = int(model[m].as_long())
+n = int(model[n].as_long())
+
+# calc a,b,c
+a = 2 * m * n
+b = m**2 - n**2
+c = m**2 + n**2
+print(a, b, c)
+print(a * b * c)
+```
