@@ -1,0 +1,21 @@
+{{- with site.Params.homeInfoParams }}
+<article class="first-entry home-info">
+    <header class="entry-header">
+        <h1>{{ .Title | markdownify }}</h1>
+    </header>
+    <div class="entry-content">
+        {{ .Content | markdownify }} <a id="randomEmoji"></a>
+    </div>
+    <footer class="entry-footer">
+        {{ partial "social_icons.html" site.Params.socialIcons }}
+    </footer>
+</article>
+<script>
+    // https://gist.github.com/ikr7/c72843556ef3a12014c3
+    const emojis = ['😈','💀','🤡','👹','👺','👻','👽','💣','🧠','👀','🍃','🐙','🐧','🥑'];
+
+    document.getElementById("randomEmoji").innerText = (() => {
+        return emojis[Math.floor(Math.random() * emojis.length)];
+    })();
+</script>
+{{- end -}}
