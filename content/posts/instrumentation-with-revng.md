@@ -411,7 +411,7 @@ bash recompile.sh dummy.translated.processed.ll
 
 Originally the binary would print the following text:
 
-```x
+```
 $ ./dummy
 -- test dlsym --
 test
@@ -419,7 +419,7 @@ test
 
 Let’s see what the instrumented version outputs:
 
-```x
+```
 $ ./dummy.translated
 dlsym => 0x1
 dlsym => 0x4165d4c8
@@ -435,7 +435,7 @@ test
 
 This looks great! Note that not all of those are arguments passed into `dlsym`. We are intercepting **all**  `function_call`s. Fun fact: The `0x4` is actually the size passed into `decrypt`! Either way, we can confidently assume that `0x1d94dc0` points to the decrypted string which is the name of a libc function to be loaded at runtime. To verify this, let’s check out what `gdb` has to say about it. Execute `b printf` to set a breakpoint on `printf` and continue using the command `c` until you see something along the lines of:
 
-```x
+```
 gef➤  c
 Continuing.
 dlsym => 0x4a2dc0
@@ -796,7 +796,7 @@ bash recompile.sh dummy.translated.processed.ll
 
 Let’s examine the output:
 
-```x
+```
 $ ./dummy.translated
 dlsym => 0x1
 dlsym => 0x42f8c4c8
@@ -816,7 +816,7 @@ test
 
 In case you can’t spot it in all the noise: `dlsym(???, "puts");`!
 
-We finally did it! We instrumented our executable in a way that it now dumps strings passed to `dlsym` at runtime without having to place any in-memory hooks. This also means that most anti-debugging tricks are rendered useless.You can find the entire project including the example code on [my GitHub](https://github.com/ioncodes/dlsym_hook).
+We finally did it! We instrumented our executable in a way that it now dumps strings passed to `dlsym` at runtime without having to place any in-memory hooks. This also means that most anti-debugging tricks are rendered useless. You can find the entire project including the example code on [my GitHub](https://github.com/ioncodes/dlsym_hook).
 
 ## Grazie
 
