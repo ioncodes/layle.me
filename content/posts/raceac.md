@@ -46,8 +46,6 @@ void* race_eac(std::wstring path)
 
 ```
 
-Copy
-
 We call `detect_eac` to make sure that the pak file is currently opened and therefore locked by EAC. This leads us to the next stage, `race_eac`. We try to open the pak file until it just works™. Once we get a valid handle the following pattern is replaced with NULL bytes:
 
 ```cpp
@@ -67,8 +65,6 @@ const std::vector<char> pattern =
 };
 
 ```
-
-Copy
 
 This pattern translates to the following sequence of chars:
 
