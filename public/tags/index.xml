@@ -2,98 +2,98 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
     <title>Tags on Layle&#39;s Lair</title>
-    <link>https://ioncodes.github.io/layle.me/tags/</link>
+    <link>https://layle.me/tags/</link>
     <description>Recent content in Tags on Layle&#39;s Lair</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Mon, 23 Aug 2021 06:59:00 +0000</lastBuildDate><atom:link href="https://ioncodes.github.io/layle.me/tags/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Mon, 23 Aug 2021 06:59:00 +0000</lastBuildDate><atom:link href="https://layle.me/tags/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>c&#43;&#43;</title>
-      <link>https://ioncodes.github.io/layle.me/tags/c&#43;&#43;/</link>
+      <link>https://layle.me/tags/c&#43;&#43;/</link>
       <pubDate>Mon, 23 Aug 2021 06:59:00 +0000</pubDate>
       
-      <guid>https://ioncodes.github.io/layle.me/tags/c&#43;&#43;/</guid>
+      <guid>https://layle.me/tags/c&#43;&#43;/</guid>
       <description></description>
     </item>
     
     <item>
       <title>lifting</title>
-      <link>https://ioncodes.github.io/layle.me/tags/lifting/</link>
+      <link>https://layle.me/tags/lifting/</link>
       <pubDate>Mon, 23 Aug 2021 06:59:00 +0000</pubDate>
       
-      <guid>https://ioncodes.github.io/layle.me/tags/lifting/</guid>
+      <guid>https://layle.me/tags/lifting/</guid>
       <description></description>
     </item>
     
     <item>
       <title>llvm</title>
-      <link>https://ioncodes.github.io/layle.me/tags/llvm/</link>
+      <link>https://layle.me/tags/llvm/</link>
       <pubDate>Mon, 23 Aug 2021 06:59:00 +0000</pubDate>
       
-      <guid>https://ioncodes.github.io/layle.me/tags/llvm/</guid>
+      <guid>https://layle.me/tags/llvm/</guid>
       <description></description>
     </item>
     
     <item>
       <title>revng</title>
-      <link>https://ioncodes.github.io/layle.me/tags/revng/</link>
+      <link>https://layle.me/tags/revng/</link>
       <pubDate>Mon, 23 Aug 2021 06:59:00 +0000</pubDate>
       
-      <guid>https://ioncodes.github.io/layle.me/tags/revng/</guid>
+      <guid>https://layle.me/tags/revng/</guid>
       <description></description>
     </item>
     
     <item>
       <title>cmake</title>
-      <link>https://ioncodes.github.io/layle.me/tags/cmake/</link>
+      <link>https://layle.me/tags/cmake/</link>
       <pubDate>Sun, 22 Aug 2021 22:00:00 +0000</pubDate>
       
-      <guid>https://ioncodes.github.io/layle.me/tags/cmake/</guid>
+      <guid>https://layle.me/tags/cmake/</guid>
       <description></description>
     </item>
     
     <item>
       <title>mcsema</title>
-      <link>https://ioncodes.github.io/layle.me/tags/mcsema/</link>
+      <link>https://layle.me/tags/mcsema/</link>
       <pubDate>Sat, 24 Jul 2021 22:00:00 +0000</pubDate>
       
-      <guid>https://ioncodes.github.io/layle.me/tags/mcsema/</guid>
+      <guid>https://layle.me/tags/mcsema/</guid>
       <description></description>
     </item>
     
     <item>
       <title>anti-cheat</title>
-      <link>https://ioncodes.github.io/layle.me/tags/anti-cheat/</link>
+      <link>https://layle.me/tags/anti-cheat/</link>
       <pubDate>Thu, 03 Jun 2021 22:00:00 +0000</pubDate>
       
-      <guid>https://ioncodes.github.io/layle.me/tags/anti-cheat/</guid>
+      <guid>https://layle.me/tags/anti-cheat/</guid>
       <description></description>
     </item>
     
     <item>
       <title>game-hacking</title>
-      <link>https://ioncodes.github.io/layle.me/tags/game-hacking/</link>
+      <link>https://layle.me/tags/game-hacking/</link>
       <pubDate>Thu, 03 Jun 2021 22:00:00 +0000</pubDate>
       
-      <guid>https://ioncodes.github.io/layle.me/tags/game-hacking/</guid>
+      <guid>https://layle.me/tags/game-hacking/</guid>
       <description></description>
     </item>
     
     <item>
       <title>reverse-engineering</title>
-      <link>https://ioncodes.github.io/layle.me/tags/reverse-engineering/</link>
+      <link>https://layle.me/tags/reverse-engineering/</link>
       <pubDate>Thu, 03 Jun 2021 22:00:00 +0000</pubDate>
       
-      <guid>https://ioncodes.github.io/layle.me/tags/reverse-engineering/</guid>
+      <guid>https://layle.me/tags/reverse-engineering/</guid>
       <description></description>
     </item>
     
     <item>
       <title>man-in-the-middle</title>
-      <link>https://ioncodes.github.io/layle.me/tags/man-in-the-middle/</link>
+      <link>https://layle.me/tags/man-in-the-middle/</link>
       <pubDate>Tue, 14 Apr 2020 22:00:00 +0000</pubDate>
       
-      <guid>https://ioncodes.github.io/layle.me/tags/man-in-the-middle/</guid>
+      <guid>https://layle.me/tags/man-in-the-middle/</guid>
       <description></description>
     </item>
     
