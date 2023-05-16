@@ -130,7 +130,6 @@ Congrats, you finally have lifted your binary to LLVM! Now let’s examine what 
 llvm-link cat.ll -o cat.recompiled.bc
 # to figure out the libraries to link against use "ldd /bin/cat"
 remill-clang-9 -o cat.recompiled cat.recompiled.bc -Wl,--section-start=.section_1ff00000=0x1ff00000
-
 ```
 
 Alright, let’s give it a shot:
