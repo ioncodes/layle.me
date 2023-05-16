@@ -123,6 +123,6 @@ p > code, li > a {
     color: #383a42 !important;
 }
 
-.post-content code {
+code, span {
     font-size: .78em !important;
 }
