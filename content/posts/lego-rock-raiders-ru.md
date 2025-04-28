@@ -880,6 +880,8 @@ DWORD __stdcall ProgressiveDecompress_hk(CHAR driveletter, __int16 value)
 
 I let the game run, played for about 30 minutes (it would usually crash within the first 10 minutes) and my friend even completed a level (which took more than an 1h) and none of us had crashes! At this point we're very confident that I managed to identify and tackle all DRM checks and restore the game to it's original functionality - even without a CD mounted.
 
+![](/images/lrr-ru/playthrough.png)
+
 You can find all of the code (incl. the original attempts in either the comments or commit history) on my [GitHub](https://github.com/ioncodes/LRR_RU_NOCD). The release section also contains the latest DLLs that can simply be dropped into the installation folder. These patches will ship with the official installers distributed over at [The Research Realm website](https://lrr.researchrealm.net/).
 
 ## The End
