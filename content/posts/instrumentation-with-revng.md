@@ -2,7 +2,7 @@
 author: "Layle"
 slug: "instrumentation-with-revng"
 aliases: ["/instrumentation-with-revng"]
-title: "Instrumenting binaries using revng and LLVM"
+title: "Instrumenting Binaries using revng and LLVM"
 summary: "One of the first things I ever wanted to implement was an import hooking library that placed the hooks by rewriting the calls statically instead of hooking the functions in-memory."
 tags: ["lifting", "c++", "revng", "llvm"]
 date: 2021-08-23T06:59:00Z

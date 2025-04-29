@@ -1,7 +1,7 @@
 ---
 author: "Layle"
 slug: "project-euler"
-title: "Taking a shot at Project Euler"
+title: "Taking a Shot at Project Euler"
 summary: "Recently I found out about Project Euler and figured I'll give it a shot with the goal to learn new things about math."
 tags: ["math", "project-euler"]
 date: 2022-12-07T22:00:00Z
