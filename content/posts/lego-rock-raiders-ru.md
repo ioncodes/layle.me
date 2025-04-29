@@ -568,7 +568,7 @@ Nothing here, right? Well, we learned our lesson. Let's dive into the disassembl
 
 ![](/images/lrr-ru/seh.png)
 
-You're looking at a function that sets up a [Structured Exception Handler (SEH)](https://learn.microsoft.com/en-us/cpp/cpp/structured-exception-handling-c-cpp?view=msvc-170). In C this would roughly translate to:
+You're looking at a function that sets up a [Structured Exception Handler (SEH)](https://learn.microsoft.com/en-us/cpp/cpp/structured-exception-handling-c-cpp?view=msvc-170) (in fact, you're looking at pre-SEH3/legacy SEH used back in older MSVC versions). In C this would roughly translate to:
 
 ```c
 __try {
@@ -626,7 +626,7 @@ Can you see that `debugthing`? Amazing name, I know. I wanted to know where it's
 .text:004386A8 | jnz     short loc_4386B7
 ```
 
-For some reason, it's always 0 (the return value of the SEH function) and at this point I was already severely sleep deprived, so I didn't want to bother with understanding what was going on there. Instead, I thought: "What if we can just patch that memory, at a specific point in time (after the value would have been set by the program itself), without patching anything in the binary?". In theory, this would allow us to bypass any integrity check as we would not rely on any code patches. I quickly implemented this idea using a Vectored Exception Handler (VEH). My idea was that, since the game keeps causing software breakpoints anyways, I can just install a VEH that writes to `debugthing` after it has been triggered a few times:
+For some reason, it's always 0 (the return value of the SEH function) and at this point I was already severely sleep deprived, so I didn't want to bother with understanding what was going on there. Instead, I thought: "What if we can just patch that memory, at a specific point in time (after the value would have been set by the program itself), without patching anything in the binary?". In theory, this would allow us to bypass any integrity check as we would not rely on any code patches. I quickly implemented this idea using a [Vectored Exception Handler (VEH)](https://learn.microsoft.com/en-us/windows/win32/debug/vectored-exception-handling). My idea was that, since the game keeps causing software breakpoints anyways, I can just install a VEH that writes to `debugthing` after it has been triggered a few times:
 
 ```c
 // We don't need this since we now hook DECO_24.DLL
