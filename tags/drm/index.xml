@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>drm on Layle&#39;s Lair</title>
+    <link>https://layle.me/tags/drm/</link>
+    <description>Recent content in drm on Layle&#39;s Lair</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Mon, 28 Apr 2025 18:00:00 +0000</lastBuildDate><atom:link href="https://layle.me/tags/drm/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>A Story about a Russian DRM and Lego Rock Raiders</title>
+      <link>https://layle.me/posts/lego-rock-raiders-ru/</link>
+      <pubDate>Mon, 28 Apr 2025 18:00:00 +0000</pubDate>
+      
+      <guid>https://layle.me/posts/lego-rock-raiders-ru/</guid>
+      <description>I was approached by &amp;ldquo;The Research Realm&amp;rdquo; - a collective aiming to preserve Lego&amp;rsquo;s history - to create a No-CD crack and fix for a rare version of Lego Rock Raiders.</description>
+    </item>
+    
+  </channel>
+</rss>

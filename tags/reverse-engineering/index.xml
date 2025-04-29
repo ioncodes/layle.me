@@ -6,7 +6,16 @@
     <description>Recent content in reverse-engineering on Layle&#39;s Lair</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Thu, 03 Jun 2021 22:00:00 +0000</lastBuildDate><atom:link href="https://layle.me/tags/reverse-engineering/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Mon, 28 Apr 2025 18:00:00 +0000</lastBuildDate><atom:link href="https://layle.me/tags/reverse-engineering/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>A Story about a Russian DRM and Lego Rock Raiders</title>
+      <link>https://layle.me/posts/lego-rock-raiders-ru/</link>
+      <pubDate>Mon, 28 Apr 2025 18:00:00 +0000</pubDate>
+      
+      <guid>https://layle.me/posts/lego-rock-raiders-ru/</guid>
+      <description>I was approached by &amp;ldquo;The Research Realm&amp;rdquo; - a collective aiming to preserve Lego&amp;rsquo;s history - to create a No-CD crack and fix for a rare version of Lego Rock Raiders.</description>
+    </item>
+    
     <item>
       <title>Breaking Dead by Daylight without Process Interaction</title>
       <link>https://layle.me/posts/breaking-dead-by-daylight/</link>
