@@ -6,7 +6,6 @@ summary: "I was approached by \"The Research Realm\" - a collective aiming to pr
 tags: ["reverse-engineering", "drm"]
 date: 2025-04-28T18:00:00Z
 weight: 1
-draft: true
 ---
 
 This weekend I've been approached by [The Research Realm](https://researchrealm.net/), a group of people who aim to preserve Lego's history, to create a [No-CD crack](https://github.com/ioncodes/LRR_RU_NOCD) and fix a bug in the game that prevented any player from progressing in the Russian version of the game Lego Rock Raiders. In this blog post, I'll take you through the entire process of doing this, step by step, including all the mistakes I've made along the way in a story-telling fashion.  
@@ -896,4 +895,4 @@ During the research, we noticed that some other Russian versions have the same D
 
 Huge thank you to The Research Realm for trying to preserve a very important part of history! It's very sad to think that one day, these games might just be completely lost, and it's therefore very important to back everything up as early as possible and make compatibility patches. The Research Realm is currently led by the founder of [Manic Miners](https://manicminers.baraklava.com/) (a modern remake of Lego Rock Raiders) [Klavvy/baraklava](https://www.youtube.com/@Klavvy) - a current employee at The Lego Group. Lego endorses the project as long as there is no financial incentive (e.g. donations, etc).
 
-I'd also like to personally thank @TODO for answering any questions swiftly and testing the patches for me!
+I'd also like to personally thank [Macley](https://www.linkedin.com/in/wesley-de-vree) for answering any questions swiftly and testing the patches for me!
