@@ -64,10 +64,12 @@ params:
     Content: This is my personal blog where you'll find me rambling about all sorts of topics. I usually talk about reverse engineering, exploit development, compilers and emulators. Enjoy your stay!
 
   socialIcons:
-    - name: twitter
-      url: "https://twitter.com/layle_ctf"
     - name: github
       url: "https://github.com/ioncodes"
+    - name: twitter
+      url: "https://twitter.com/layle_ctf"
+    - name: bluesky
+      url: "https://bsky.app/profile/layle.bsky.social"
 
   cover:
     hidden: true # hide everywhere but not in structured data
