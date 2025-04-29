@@ -180,7 +180,7 @@ With that, we've reached our first milestone - we're able to bypass the CD check
 Finding a specific place in code, especially inside of a large game engine, is usually a difficult task; however, I had multiple options here.
 
 ### Fail #1
-My first approach was looking through all known variants (read: languages) of the game and checking the timestamp and filesize of `LegoRR.exe`. My hypothesis was that if I find a file that's similar enough, I may be able to just diff them against each other to find any changes that might catch my eye. Turns out the Japanese version is only 1 month "younger" while being 1kb bigger than the Russian version. I used IDA Pro 9.1 and [Diaphora](https://github.com/joxeankoret/diaphora) to create the diffs:
+My first approach was looking through all known variants (read: languages) of the game and checking the timestamp and filesize of `LegoRR.exe`. My hypothesis was that if I find a file that's similar enough, I may be able to just diff them against each other to find any changes that might catch my eye. Turns out the Japanese version is only 1 month "younger" while being 1kb bigger than the Russian version. An archive of all released languages can be found [here](https://archive.org/details/BRRICS). I used IDA Pro 9.1 and [Diaphora](https://github.com/joxeankoret/diaphora) to create the diffs:
 
 ![](/images/lrr-ru/diaphora.png)
 
