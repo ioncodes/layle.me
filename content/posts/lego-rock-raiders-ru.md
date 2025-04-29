@@ -12,7 +12,7 @@ This weekend I've been approached by [The Research Realm](https://researchrealm.
 
 ## Background
 Based on the information I was provided, I thought 2 separate issues took place in the game:
-1. A CD check prevents the game from being played without a mounted ISO/CD (may that be virtually* or physically)
+1. A CD check prevents the game from being played without a mounted ISO/CD (may that be [virtually](https://winiso.com/) or physically)
    ![](/images/lrr-ru/cdmsgbox.png)
 2. A bug would prevent the player from progressing the game as it was not possible to upgrade the "base" ingame
    <video width="600" controls>
