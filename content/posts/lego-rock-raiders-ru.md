@@ -13,7 +13,7 @@ This weekend I've been approached by [The Research Realm](https://researchrealm.
 
 ## Background
 Based on the information I was provided, I thought 2 separate issues took place in the game:
-1. A CD check prevents the game from being played without a mounted ISO/CD (may that be [virtually](https://winiso.com/) or physically)
+1. A CD check prevents the game from being played without a mounted ISO/CD
    ![](/images/lrr-ru/cdmsgbox.png)
 2. A bug would prevent the player from progressing the game as it was not possible to upgrade the "base" in-game
    <video width="600" controls>
@@ -292,7 +292,7 @@ Let's examine the disassembly, in particular the basic block right before the `r
 
 Notice the following sequence:
 
-```nasm
+```x86asm
 mov edx, 4386FAh
 push edx
 ; ...
@@ -301,7 +301,7 @@ retn
 
 As we know, a `ret` pops from the stack and jumps to that location. IDA isn't able to deduce this and ends up not displaying the rest of the code. I didn't do this personally, but you could technically patch out these sequences with NOP slides which would restore the decompilation like so:
 
-```nasm
+```x86asm
 .text:004386E5 | pop     esi
 .text:004386E6 | nop
 .text:004386E7 | nop
@@ -423,7 +423,7 @@ Since I was patching the binary to invert the check and that exhibited the same 
 
 It takes a while, but eventually the debugger will break at the following location:
 
-```nasm
+```x86asm
 004781FB | 33C0        | xor eax,eax                 
 004781FD | 0306        | add eax,dword ptr ds:[esi]       ; breakpoint triggered here
 004781FF | 46          | inc esi                     
@@ -620,7 +620,7 @@ The `SetTimer` call basically sets up a timer that periodically (1000ms = 1 seco
 ## Fail #2
 Can you see that `debugthing`? Amazing name, I know. I wanted to know where it's used, mostly out of curiosity, and was able to trace it up until the very same function that handles the upgrade base / subtract rocks logic:
 
-```nasm
+```x86asm
 .text:004386A3 | mov     eax, [ebp+0Ch]    ; debugthing ends up here
 .text:004386A6 | test    eax, eax
 .text:004386A8 | jnz     short loc_4386B7
@@ -815,7 +815,7 @@ With the debugger attached, the VEH meme removed, and the checksum patches reapp
 ## Fighting the DRM - Part 2
 I used the same approach as earlier to create memory read breakpoints in the debugger, but placed it on `ProgressiveDecompress_24` this time. That immediately revealed more integrity/checksum checks:
 
-```nasm
+```x86asm
 004386DF | 0306 | add eax,dword ptr ds:[esi]
 004798CA | 0306 | add eax,dword ptr ds:[esi]
 ```
