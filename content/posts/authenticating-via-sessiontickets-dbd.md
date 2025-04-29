@@ -5,6 +5,7 @@ title: "Authenticating to Dead by Daylight Servers via Steam Session Tickets"
 summary: "In this post we'll be looking into grabbing a valid bhvrSession cookie without SSL sniffing."
 tags: ["game-hacking", "man-in-the-middle", "steam", "steam-session-tickets"]
 date: 2023-05-08T08:00:00Z
+weight: 4
 draft: false
 ---
 
