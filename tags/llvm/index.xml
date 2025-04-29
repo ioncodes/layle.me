@@ -8,7 +8,7 @@
     <language>en-us</language>
     <lastBuildDate>Mon, 23 Aug 2021 06:59:00 +0000</lastBuildDate><atom:link href="https://layle.me/tags/llvm/index.xml" rel="self" type="application/rss+xml" />
     <item>
-      <title>Instrumenting binaries using revng and LLVM</title>
+      <title>Instrumenting Binaries using revng and LLVM</title>
       <link>https://layle.me/posts/instrumentation-with-revng/</link>
       <pubDate>Mon, 23 Aug 2021 06:59:00 +0000</pubDate>
       
@@ -26,7 +26,7 @@
     </item>
     
     <item>
-      <title>Lifting binaries to LLVM with McSema</title>
+      <title>Lifting Binaries to LLVM with McSema</title>
       <link>https://layle.me/posts/using-mcsema/</link>
       <pubDate>Sat, 24 Jul 2021 22:00:00 +0000</pubDate>
       
