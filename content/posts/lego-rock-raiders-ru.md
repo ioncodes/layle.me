@@ -632,30 +632,30 @@ For some reason, it's always 0 (the return value of the SEH function) and at thi
 // We don't need this since we now hook DECO_24.DLL
 LONG CALLBACK VectoredHandler(EXCEPTION_POINTERS* ExceptionInfo)
 {
-	static int hitCounter = 0;
+  static int hitCounter = 0;
 
-	// This exception address occurs anyways, let's just reuse it
-	if (ExceptionInfo->ExceptionRecord->ExceptionAddress == (PVOID)0x0047983A && hitCounter > 5 && hitCounter != 0xFF)
-	{
-		// Write "LAYL" to the flag, anything non-zero works
-		BYTE* pLol = reinterpret_cast<BYTE*>(0x0076D160);
-		pLol[0] = 'L';
-		pLol[1] = 'A';
-		pLol[2] = 'Y';
-		pLol[3] = 'L';
+  // This exception address occurs anyways, let's just reuse it
+  if (ExceptionInfo->ExceptionRecord->ExceptionAddress == (PVOID)0x0047983A && hitCounter > 5 && hitCounter != 0xFF)
+  {
+    // Write "LAYL" to the flag, anything non-zero works
+    BYTE* pLol = reinterpret_cast<BYTE*>(0x0076D160);
+    pLol[0] = 'L';
+    pLol[1] = 'A';
+    pLol[2] = 'Y';
+    pLol[3] = 'L';
 
-		hitCounter = 0xFF; // Oracle to not trigger this again
+    hitCounter = 0xFF; // Oracle to not trigger this again
 
-		std::cout << "Patched upgrade base flag" << std::endl;
-	}
-	else if (ExceptionInfo->ExceptionRecord->ExceptionAddress == (PVOID)0x0047983A && hitCounter != 0xFF)
-	{
-		std::cout << "Hit exception " << std::hex << ExceptionInfo->ExceptionRecord->ExceptionAddress << " [" << hitCounter << "]. Waiting..." << std::endl;
-		hitCounter++;
-	}
+    std::cout << "Patched upgrade base flag" << std::endl;
+  }
+  else if (ExceptionInfo->ExceptionRecord->ExceptionAddress == (PVOID)0x0047983A && hitCounter != 0xFF)
+  {
+    std::cout << "Hit exception " << std::hex << ExceptionInfo->ExceptionRecord->ExceptionAddress << " [" << hitCounter << "]. Waiting..." << std::endl;
+    hitCounter++;
+  }
 
-	// There should be another handler available
-	return EXCEPTION_CONTINUE_SEARCH;
+  // There should be another handler available
+  return EXCEPTION_CONTINUE_SEARCH;
 }
 
 AddVectoredExceptionHandler(1, VectoredHandler);
