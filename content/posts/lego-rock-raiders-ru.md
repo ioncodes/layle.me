@@ -193,7 +193,7 @@ But, we did learn something important: These 2 versions are very similar to each
 ### Cheat Engine for the Win
 So with that first approach not yielding anything, I dusted off [Cheat Engine](https://www.cheatengine.org/) with the gameplan to scan for the rock value. Once we have the address of the rock counter in memory, we can then intercept all *writes* (subtractions in this case) to it. Once we find this code, we can just look for the same code in the Russian version. These are the steps I followed:
 
-1. Open CheatEngine and attach it to the German version
+1. Open Cheat Engine and attach it to the German version
 2. Start the 5th tutorial mission (3rd menu option, then character holding TNT)
 3. While the character collects rocks, scan for the rock counter (3, then 4, then 5, then 6)
 4. With the rock counter address, we "Find out what writes to this address" (see right click context menu in Cheat Engine)
