@@ -9,7 +9,11 @@ weight: 1
 draft: true
 ---
 
-This weekend I've been approached by [The Research Realm](https://researchrealm.net/), a group of people who aim to preserve Lego's history, to create a [No-CD crack](https://github.com/ioncodes/LRR_RU_NOCD) and fix a bug in the game that prevented any player from progressing in the Russian version of the game Lego Rock Raiders. In this blog post, I'll take you through the entire process of doing this, step by step, including all the mistakes I've made along the way in a story-telling fashion.
+This weekend I've been approached by [The Research Realm](https://researchrealm.net/), a group of people who aim to preserve Lego's history, to create a [No-CD crack](https://github.com/ioncodes/LRR_RU_NOCD) and fix a bug in the game that prevented any player from progressing in the Russian version of the game Lego Rock Raiders. In this blog post, I'll take you through the entire process of doing this, step by step, including all the mistakes I've made along the way in a story-telling fashion.  
+
+I've never been a Lego Rock Raiders player myself (I've been a Lego Island kid instead!) so I don't know the exact intricacies and mechanics of the game. My main motivation derived from:
+1. Me believing that preservation is very important
+2. My girlfriend having fond memories of the game from back in her childhood
 
 ## Background
 Based on the information I was provided, I thought 2 separate issues took place in the game:
@@ -21,7 +25,7 @@ Based on the information I was provided, I thought 2 separate issues took place 
     Your browser does not support the video tag.
    </video>
 
-Notice how in the video, the rock count doesn't decrease - normally, upon upgrading the base, it should play an animation as well as subtract the appropriate amount of rocks. Without this feature, it's not possible to progress in the game. At the time, I thought this was likely some obscure bug, perhaps a "normal" bug within the game itself; however, the bug would never cause any issues due to some inconsistency between older versions of Windows and modern ones (as seen in multiple older titles).
+Notice how in the video the rock count doesn't decrease - normally, upon upgrading the base, it should play an animation as well as subtract the appropriate amount of rocks. Without this feature, it's not possible to progress in the game. At the time, I thought this was likely some obscure bug, perhaps a "normal" bug within the game itself; however, the bug would never cause any issues due to some inconsistency between older versions of Windows and modern ones (as seen in multiple older titles).
 
 ## The CD Check
 Opening up the `LegoRR.exe` binary in your favorite decompiler and going to the `WinMain` function will reveal what's going on fairly quickly (... or does it?):
@@ -181,14 +185,14 @@ My first approach was looking through all known variants (read: languages) of th
 
 ![](/images/lrr-ru/diaphora.png)
 
-There was this one function that had a very low match ratio (literally the lowest) and looked very strange; however, at first glance in the decompilation, I figured it's nothing worth investigating. Oh, how I was wrong...
+There was this one function that had a very low match ratio (literally the lowest) and looked very strange; however, at first glance in the decompilation it didn't look related to an "upgrade base bug" so I figured it's nothing worth investigating. Oh, how I was wrong...
 
 ![](/images/lrr-ru/weirddiaphora.png)
 
-However, we did learn something important: These 2 versions are very similar to each other, so it may be possible to find something in one version and then trace it back to the other with a patternscan? We can't use the Russian one, since we know that this one is bugged, so I opted for debugging the Japanese and German versions instead.
+But, we did learn something important: These 2 versions are very similar to each other, so it may be possible to find something in one version and then trace it back to the other with a patternscan? We can't use the Russian one, since we know that this one is bugged, so I opted for debugging the Japanese and German (mostly out of curiosity) versions instead.
 
-### CheatEngine for the Win
-So with that first approach not yielding anything, I dusted off [CheatEngine](https://www.cheatengine.org/) with the gameplan to scan for the rock value. Once we have the address of the rock counter in memory, we can then intercept all *writes* (subtractions in this case) to it. Once we find this code, we can just look for the same code in the Russian version. These are the steps I followed:
+### Cheat Engine for the Win
+So with that first approach not yielding anything, I dusted off [Cheat Engine](https://www.cheatengine.org/) with the gameplan to scan for the rock value. Once we have the address of the rock counter in memory, we can then intercept all *writes* (subtractions in this case) to it. Once we find this code, we can just look for the same code in the Russian version. These are the steps I followed:
 
 1. Open CheatEngine and attach it to the German version
 2. Start the 5th tutorial mission (3rd menu option, then character holding TNT)
@@ -229,7 +233,7 @@ int __cdecl removerocks(int a1, int a2)
 }
 ```
 
-Seems simple enough to just search for the same code in the Russian version, right? My preferred method is to actually export the to-be-searched game version as C decompilation and then search a string like `-= a2` (something that's simple enough to be universal) in the Russian version. That yielded the following code:
+Seems simple enough to just search for the same code in the Russian version, right? My preferred method is to actually export the to-be-searched game version as C decompilation and then search a string like `-= a2` (something that's simple enough to be universal). That yielded the following code:
 
 ```c
 void __cdecl sub_41F9B0(int a1, int a2)
@@ -248,7 +252,7 @@ void __cdecl sub_41F9B0(int a1, int a2)
 }
 ```
 
-Literally the same, awesome! Now with this in place to check all xrefs and noticed that one of them is that weird location function we saw with Diaphora earlier, the one with the `GetModuleHandleA("DECO_24.DLL")`. Set a breakpoint, play the TNT tutorial again, and voilà, we got a hit!
+Literally the same, awesome! Now from here I examined all xrefs (cross references) of the function and noticed that one of them is that weird location we saw with Diaphora earlier, the one with the `GetModuleHandleA("DECO_24.DLL")`. Set a breakpoint, play the TNT tutorial again, and voilà, we got a hit!
 
 ![](/images/lrr-ru/deco24bphit.png)
 
@@ -286,7 +290,7 @@ int __usercall sub_438699@<eax>(int a1@<eax>, int a2@<ebp>)
 }
 ```
 
-Let's examine the disassembly, in particular the basic block right before the `ret`:
+Let's have a look at the disassembly, in particular the basic block right before the `ret`:
 
 ![](/images/lrr-ru/hiddencode.png)
 
@@ -425,8 +429,8 @@ It takes a while, but eventually the debugger will break at the following locati
 
 ```x86asm
 004781FB | 33C0        | xor eax,eax                 
-004781FD | 0306        | add eax,dword ptr ds:[esi]       ; breakpoint triggered here
-004781FF | 46          | inc esi                     
+004781FD | 0306        | add eax,dword ptr ds:[esi]       ; breakpoint triggered here, add DWORD at esi to checksum (eax)
+004781FF | 46          | inc esi                          ; increment address
 00478200 | 49          | dec ecx                     
 00478201 | 75 FA       | jne legorr.4781FD                ; loop back to 004781FD
 00478203 | 5E          | pop esi                     
@@ -440,7 +444,7 @@ It takes a while, but eventually the debugger will break at the following locati
 0047821A | C3          | ret                         
 ```
 
-Reading the disassembly (I omitted a few things) reveals a loop that increments from address A to B and adds the 32bit value located at said address to a counter. This counter is then subtracted by a known value, and the result is then used to subtract the value that `ESP` points at. `ESP` "just so happens" to point to the next function executed. Therefore, if the checksum (the counter) does not match the predetermined value, the subtraction will be non-zero, which in turn means the first 4 bytes of the next function are subtracted by the leftover amount. Short pseudocode:
+Reading the disassembly (I omitted a few things) reveals a loop that increments from address A to B and adds the 32bit value located at said address to a counter. This counter is then subtracted by a known value, and the result is then used to subtract the value that `ESP` points at. `ESP` "just so happens" to point to the next function executed. Therefore, if the checksum (the counter, or `EAX`) does not match the predetermined value, the subtraction will be non-zero, which in turn means the first 4 bytes of the next function are subtracted by the leftover amount. Short pseudocode:
 
 ```c
 for (int i = 0; i < SIZE; i++) {
@@ -466,7 +470,7 @@ do
 }
 ```
 
-I naively copied the byte sequence at the end which is `2B 42 04 29 04 24 33 C0 64 89 00` and added a function that replaces the `sub dword ptr ss:[esp],eax` with 3 NOPs.
+The modification of the next function was never directly apparent in the decompilation which is why it was so easy to miss, even though we've been staring at the integrity check this whole time. I naively copied the byte sequence at the end which is `2B 42 04 29 04 24 33 C0 64 89 00` and added a function that replaces the `sub dword ptr ss:[esp],eax` (the part that performs the modification) with 3 NOPs.
 
 ```c
 VOID NopChecksumCheck(BYTE* pAddress, size_t size)
@@ -618,7 +622,7 @@ if ( !debugthing )
 The `SetTimer` call basically sets up a timer that periodically (1000ms = 1 second) executes a function. Anyways, we're looking for any xref that uses this global in any meaningful way.
 
 ## Fail #2
-Can you see that `debugthing`? Amazing name, I know. I wanted to know where it's used, mostly out of curiosity, and was able to trace it up until the very same function that handles the upgrade base / subtract rocks logic:
+Can you see that `debugthing`? Amazing name, I know. My ADHD brain took over as I wanted to know where it's used, mostly out of curiosity, and was able to trace it up until the very same function that handles the upgrade base / subtract rocks logic:
 
 ```x86asm
 .text:004386A3 | mov     eax, [ebp+0Ch]    ; debugthing ends up here
@@ -626,7 +630,7 @@ Can you see that `debugthing`? Amazing name, I know. I wanted to know where it's
 .text:004386A8 | jnz     short loc_4386B7
 ```
 
-For some reason, it's always 0 (the return value of the SEH function) and at this point I was already severely sleep deprived, so I didn't want to bother with understanding what was going on there. Instead, I thought: "What if we can just patch that memory, at a specific point in time (after the value would have been set by the program itself), without patching anything in the binary?". In theory, this would allow us to bypass any integrity check as we would not rely on any code patches. I quickly implemented this idea using a [Vectored Exception Handler (VEH)](https://learn.microsoft.com/en-us/windows/win32/debug/vectored-exception-handling). My idea was that, since the game keeps causing software breakpoints anyways, I can just install a VEH that writes to `debugthing` after it has been triggered a few times:
+For some reason, it's always 0 (the return value of the SEH function) and at this point I was already severely sleep deprived, so I didn't want to bother with understanding what was going on there. Instead, I thought: "What if we can just patch that memory, at a specific point in time (after the value would have been set by the program itself), without patching anything in the binary?". In theory, this would allow us to bypass any integrity check as we would not rely on any code patches. I quickly implemented this idea using a [Vectored Exception Handler (VEH)](https://learn.microsoft.com/en-us/windows/win32/debug/vectored-exception-handling). My idea was that, since the game keeps causing software breakpoints anyways, I can just install a handler that gets triggered whenever the game causes the `int3` exception and then writes to `debugthing` after it has been triggered a few times:
 
 ```c
 // We don't need this since we now hook DECO_24.DLL
@@ -713,7 +717,7 @@ if (value == 0x41321B) {
 }
 ```
 
-`ProgressiveDecompress_24` is located inside of `DECO_24.DLL`, a DLL that can only be found in Russian versions of Lego games. At this point it started to dawn on me... All the bugs we have encountered, the crashes and the gated functionality (upgrade base for example) are all DRM checks and not "just bugs/quirks". It reminded me a bit of that one Spyro game that would just delete your savegame towards the end(?) of the game. Are they just using "normal" sounding names to obscure what they're doing, kind of like what the Windows kernel does with PatchGuard? Let's look at the function in IDA:
+`ProgressiveDecompress_24` is located inside of `DECO_24.DLL`, a DLL that can only be found in Russian versions of Lego games. At this point it started to dawn on me... All the bugs we have encountered, the crashes and the gated functionality (upgrade base for example) are all DRM checks and not "just bugs/quirks". It reminded me a bit of that one Spyro game that would just delete your savegame towards the end(?) of the game if a pirated copy had been detected. Are they just using "normal" sounding names to obscure what they're doing, kind of like what the Windows kernel does with PatchGuard? Let's look at the function in IDA:
 
 ```c
 DWORD __stdcall ProgressiveDecompress_24(CHAR driveletter, __int16 idk)
@@ -846,7 +850,7 @@ This time I ran the tests myself as you can unlock all levels using the argument
 
 ![](/images/lrr-ru/decompresslog.png)
 
-The line `ProgressiveDecompress(' ', 3) -> 7257e998` is very interesting (side note, notice the ' ', that's because we removed the `cd.key` yet it still works) as it shows that the 2nd argument can be `3` as well. `7257e998` is basically my default case in the code that sets `result = (DWORD)"LAYL";`. Since we're covering only `case 2`, a bogus value is returned. Xrefing `ProgressiveDecompress_24` shows a caller that pushes `3` to the stack as argument and requires the function to return `0x0043002F`.
+The line `ProgressiveDecompress(' ', 3) -> 7257e998` is very interesting (side note, notice the ' ', that's because we removed the `cd.key`, yet it still works) as it shows that the 2nd argument can be `3` as well. `7257e998` is basically my default case in the code that sets `result = (DWORD)"LAYL";`. Since we're covering only `case 2`, a bogus value is returned. Xrefing `ProgressiveDecompress_24` shows a caller that pushes `3` to the stack as argument and requires the function to return `0x0043002F`.
 
 ![](/images/lrr-ru/lastdecompresscall.png)
 
@@ -883,11 +887,13 @@ I let the game run, played for about 30 minutes (it would usually crash within t
 
 ![](/images/lrr-ru/playthrough.png)
 
-You can find all of the code (incl. the original attempts in either the comments or commit history) on my [GitHub](https://github.com/ioncodes/LRR_RU_NOCD). The release section also contains the latest DLLs that can simply be dropped into the installation folder. These patches will ship with the official installers distributed over at [The Research Realm website](https://lrr.researchrealm.net/).
+You can find all of the code (incl. the original attempts in either the comments or commit history, IDA and Diaphora databases) on my [GitHub](https://github.com/ioncodes/LRR_RU_NOCD). The release section also contains the latest DLLs that can simply be dropped into the installation folder. These patches will ship with the official installers distributed over at [The Research Realm website](https://lrr.researchrealm.net/).
 
 ## The End
 This marks a huge milestone as a public No-CD crack was not available for this rare Lego version, and neither does any documentation on how the DRM works. To this day, only people with legitimate copies of the game were able to run the game, and these copies of the Russian version are extremely hard to come by.  
 
-During the research, we noticed that some other Russian versions have the same DLLs. It's currently unknown to us whether there are actually more lost/unfixed games and media, and we're currently trying to get our hands on them along with test setups to see if they work on modern machines or whether they need fixes/cracks as well.
+During the research, we noticed that some other Russian versions have the same DLLs. It's currently unknown to us whether there are actually more lost/unfixed games and media, and we're currently trying to get our hands on them as well as finding volunteers for testing.
 
-Huge thank you to The Research Realm for trying to preserve a very important part of history! It's very sad to think that one day, these games might just be completely lost, and it's therefore very important to back everything up as early as possible and make compatibility patches. The Research Realm is currently led by the founder [Klavvy/baraklava](https://www.youtube.com/@Klavvy) of [Manic Miners](https://manicminers.baraklava.com/), a modern remake of Lego Rock Raiders and a current employee at The Lego Group. Lego endorses the project as long as there is no financial incentive (e.g. donations, etc).
+Huge thank you to The Research Realm for trying to preserve a very important part of history! It's very sad to think that one day, these games might just be completely lost, and it's therefore very important to back everything up as early as possible and make compatibility patches. The Research Realm is currently led by the founder of [Manic Miners](https://manicminers.baraklava.com/) (a modern remake of Lego Rock Raiders) [Klavvy/baraklava](https://www.youtube.com/@Klavvy) - a current employee at The Lego Group. Lego endorses the project as long as there is no financial incentive (e.g. donations, etc).
+
+I'd also like to personally thank @TODO for answering any questions swiftly and testing the patches for me!
