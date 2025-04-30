@@ -44,7 +44,7 @@ The rest of `WinMain` calls some more functions, but I wasn't interested in that
 
 ![](/images/lrr-ru/winmainrest.png)
 
-During debugging, I noticed that I wasn't able to set normal breakpoints as the game would eventually break the stack and execute a bogus address. I thought that it was likely due to some sort of integrity check (bonus points if you were already able to spot it in the screenshot) but didn't bother with it since I could just use hardware breakpoints. For some context: Software breakpoints overwrite a byte at the target location and set it to `0xCC`, which is the equivalent of `int3` to cause an exception.  
+During debugging, I noticed that I wasn't able to set normal breakpoints as the game would eventually break the stack and execute a bogus address. I thought that it was likely due to some sort of integrity check (bonus points if you were already able to spot it in the screenshot) but I didn't bother with it since I could just use hardware breakpoints. For some context: Software breakpoints overwrite a byte at the target location and set it to `0xCC`, which is the equivalent of `int3` to cause an exception.  
 
 However, knowing that I can't patch the code itself, I had to think of a "strategy" on how to implement these patches without making any changes to the `.text` section of `LegoRR.exe`.
 
@@ -664,7 +664,7 @@ LONG CALLBACK VectoredHandler(EXCEPTION_POINTERS* ExceptionInfo)
 AddVectoredExceptionHandler(1, VectoredHandler);
 ```
 
-With the CD key placed in `C:\Data\cd.key`, no debugger attached, and the VEH installed to overwrite `debugthing`/`0x0076D160`, the game stopped crashing when we tried to upgrade the characters (I technically also removed all of the patches for the checksum checks)! I can't attach a video of it sadly as it takes quite a while for characters to be upgraded. 
+With the CD key placed in `C:\Data\cd.key`, no debugger attached, and the VEH installed to overwrite `debugthing`/`0x0076D160`, the game stopped crashing when we tried to upgrade the characters (I technically also removed all of the patches for the checksum checks)! I can't attach a video of it sadly as it takes quite a while for characters to be upgraded. <Add clip, speed up how they do that normally, easy>
 
 However, the story doesn't end here. I passed the crack on again for some testing and...
 
@@ -889,10 +889,10 @@ I let the game run, played for about 30 minutes (it would usually crash within t
 You can find all of the code (incl. the original attempts in either the comments or commit history, IDA and Diaphora databases) on my [GitHub](https://github.com/ioncodes/LRR_RU_NOCD). The release section also contains the latest DLLs that can simply be dropped into the installation folder. These patches will ship with the official installers distributed over at [The Research Realm website](https://lrr.researchrealm.net/).
 
 ## The End
-This marks a huge milestone as a public No-CD crack was not available for this rare Lego version, and neither does any documentation on how the DRM works. To this day, only people with legitimate copies of the game were able to run the game, and these copies of the Russian version are extremely hard to come by.  
+This marks a huge milestone as a public No-CD crack was not available for this translation of the game, and neither does any documentation on how the DRM works. To this day, only people with legitimate copies of the game were able to run the game, and these copies of the Russian version are extremely hard to come by.
 
 During the research, we noticed that some other Russian versions have the same DLLs. It's currently unknown to us whether there are actually more lost/unfixed games and media, and we're currently trying to get our hands on them as well as finding volunteers for testing.
 
-Huge thank you to The Research Realm for trying to preserve a very important part of history! It's very sad to think that one day, these games might just be completely lost, and it's therefore very important to back everything up as early as possible and make compatibility patches. The Research Realm is currently led by the founder of [Manic Miners](https://manicminers.baraklava.com/) (a modern remake of Lego Rock Raiders) [Klavvy/baraklava](https://www.youtube.com/@Klavvy) - a current employee at The Lego Group. Lego endorses the project as long as there is no financial incentive (e.g. donations, etc).
+Huge thank you to The Research Realm for trying to preserve a very important part of history! It's very sad to think that one day, these games might just be completely lost, and it's therefore very important to back everything up as early as possible and make compatibility patches. The Research Realm is currently led by the main developer of [Manic Miners](https://manicminers.baraklava.com/) (a modern remake of Lego Rock Raiders) [Klavvy/baraklava](https://www.youtube.com/@Klavvy) - a current employee at The Lego Group. Lego endorses the project as long as there is no financial incentive (e.g. donations, etc).
 
 I'd also like to personally thank [Macley](https://www.linkedin.com/in/wesley-de-vree) for answering any questions swiftly and testing the patches for me!
