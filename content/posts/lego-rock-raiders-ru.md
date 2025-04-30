@@ -507,6 +507,11 @@ Your browser does not support the video tag.
 
 ![](/images/lrr-ru/morebugs.png)
 
+<video width="600" controls>
+<source src="/videos/lrr-ru/rockraider-upgrade-bug.mp4" type="video/mp4">
+Your browser does not support the video tag.
+</video>
+
 So there are more bugs... But why? There's one thing I haven't told you about yet: `cd.key`. I thought perhaps I should invest some time into checking what this is about. I ignored it up until now as the game just worked fine, even without that file. The CD contains a file in `Data\cd.key` that is sort of like a CD license key... but not really, the contents are ignored entirely and it ships with `0xDEAD`. Cross-referencing the string revealed 2 locations, one of which seemed interesting as it loops through possible drive letters until it finds the `cd.key` file and then caches the drive letter where the file had been identified:
 
 ```c
@@ -664,7 +669,12 @@ LONG CALLBACK VectoredHandler(EXCEPTION_POINTERS* ExceptionInfo)
 AddVectoredExceptionHandler(1, VectoredHandler);
 ```
 
-With the CD key placed in `C:\Data\cd.key`, no debugger attached, and the VEH installed to overwrite `debugthing`/`0x0076D160`, the game stopped crashing when we tried to upgrade the characters (I technically also removed all of the patches for the checksum checks)! I can't attach a video of it sadly as it takes quite a while for characters to be upgraded. <Add clip, speed up how they do that normally, easy>
+With the CD key placed in `C:\Data\cd.key`, no debugger attached, and the VEH installed to overwrite `debugthing`/`0x0076D160`, the game stopped crashing when we tried to upgrade the characters (I technically also removed all of the patches for the checksum checks)!
+
+<video width="600" controls>
+<source src="/videos/lrr-ru/rockraider-upgraded-fixed.mp4" type="video/mp4">
+Your browser does not support the video tag.
+</video>
 
 However, the story doesn't end here. I passed the crack on again for some testing and...
 
