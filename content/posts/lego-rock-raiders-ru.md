@@ -19,7 +19,7 @@ Based on the information I was provided, I thought 2 separate issues took place 
 1. A CD check prevents the game from being played without a mounted ISO/CD
    ![](/images/lrr-ru/cdmsgbox.png)
 2. A bug would prevent the player from progressing the game as it was not possible to upgrade the "base" in-game
-   <video width="600" controls>
+   <video style="max-width: 100%;" controls>
     <source src="/videos/lrr-ru/upgrade-base-bug.mp4" type="video/mp4">
     Your browser does not support the video tag.
    </video>
@@ -498,7 +498,7 @@ There were a total of 3 locations I was able to identify with the given signatur
 
 I built a new version of the DLL and passed it along for testing as I seemed to be able to at least pass the TNT tutorial now. So at this point, the base upgrade actually works! Wow!
 
-<video width="600" controls>
+<video style="max-width: 100%;" controls>
 <source src="/videos/lrr-ru/upgrade-base-fixed.mp4" type="video/mp4">
 Your browser does not support the video tag.
 </video>
@@ -507,7 +507,7 @@ Your browser does not support the video tag.
 
 ![](/images/lrr-ru/morebugs.png)
 
-<video width="600" controls>
+<video style="max-width: 100%;" controls>
 <source src="/videos/lrr-ru/rockraider-upgrade-bug.mp4" type="video/mp4">
 Your browser does not support the video tag.
 </video>
@@ -671,7 +671,7 @@ AddVectoredExceptionHandler(1, VectoredHandler);
 
 With the CD key placed in `C:\Data\cd.key`, no debugger attached, and the VEH installed to overwrite `debugthing`/`0x0076D160`, the game stopped crashing when we tried to upgrade the characters (I technically also removed all of the patches for the checksum checks)!
 
-<video width="600" controls>
+<video style="max-width: 100%;" controls>
 <source src="/videos/lrr-ru/rockraider-upgraded-fixed.mp4" type="video/mp4">
 Your browser does not support the video tag.
 </video>
