@@ -786,7 +786,7 @@ DWORD __cdecl docdcheck(CHAR driveletter, unsigned __int16 idk)
 }
 ```
 
-`docdcheck` is the interesting function here, and all it does is grab a handle to the CD drive (remember `driveletter` comes from `cdkeydriveletter`, refer to the callchain earlier. In our case it "happens" to be `C:\` since that's where it found the `cd.key` file), and send a `IOCTL_CDROM_READ_TOC` IOCTL request to the disk driver. As per [MSDN](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddcdrm/ni-ntddcdrm-ioctl_cdrom_read_toc), `IOCTL_CDROM_READ_TOC` gets the table of contents for the given CD. The second argument `idk` is then used to offset into the `CDROM_TOC` structure which likely reads track data.
+`docdcheck` is the interesting function here, and all it does is grab a handle to the CD drive (remember `driveletter` comes from `cdkeydriveletter`, refer to the callchain earlier. In our case it "happens" to be `C:\` since that's where it found the `cd.key` file), and send a `IOCTL_CDROM_READ_TOC` IOCTL request to the disk driver. As per [MSDN](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddcdrm/ni-ntddcdrm-ioctl_cdrom_read_toc), `IOCTL_CDROM_READ_TOC` gets the table of contents for the given CD. The second argument `idk` is then used to offset into the `CDROM_TOC` structure which is used to read track/session data. The extracted value is then manipulated (to be specifically, the endianness is being swapped) and returned.
 
 Could this function be responsible for my crashes? Since we're already using `MinHook` to hook Windows APIs, we might as well just give it a shot with the `ProgressiveDecompress_24` function since we know what we're expected to return (`0x41321B`, refer to the start of this chapter).
 
