@@ -13,6 +13,8 @@ This weekend I've been approached by [The Research Realm](https://researchrealm.
 I've never been a Lego Rock Raiders player myself (I've been a Lego Island kid instead!) so I don't know the exact intricacies and mechanics of the game. My main motivation derived from:
 1. Me believing that preservation is very important
 2. My girlfriend having fond memories of the game from back in her childhood
+  
+Update: [I made a website](https://noviy.layle.dev/) that allows you to automagically patch a protected file directly in your browser. The tool can also be run on the CLI. The source code is available [here](https://github.com/ioncodes/noviy_nocd).
 
 ## Background
 Based on the information I was provided, I thought 2 separate issues took place in the game:
