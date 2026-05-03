@@ -1,12 +1,32 @@
 [
   {
+    "id": "gecko",
+    "name": "gecko",
+    "description": "A GameCube and Wii emulator sporting an advanced debugger and Lua scripting with optional support for web browsers.",
+    "language": "Rust",
+    "category": "Emulation",
+    "image": "/projects/gecko.png",
+    "url": "https://github.com/ioncodes/gecko",
+    "featured": true
+  },
+  {
     "id": "ayyboy-advance",
-    "name": "ayyboy-advance",
+    "name": "ayyboy advance",
     "description": "A GameBoy Advance emulator with an elaborate CPU and GPU debugger as well as Rhai scripting support.",
     "language": "Rust",
     "category": "Emulation",
     "image": "/projects/ayyboy-advance.png",
-    "url": "https://github.com/ioncodes/ayyboy-advance"
+    "url": "https://github.com/ioncodes/ayyboy-advance",
+    "featured": true
+  },
+  {
+    "id": "pspsps",
+    "name": "pspsps",
+    "description": "An experimental PlayStation 1 emulator and debugger, with basic shader support.",
+    "language": "Rust",
+    "category": "Emulation",
+    "image": "/projects/pspsps.png",
+    "url": "https://github.com/ioncodes/pspsps"
   },
   {
     "id": "ayyboy",
@@ -29,7 +49,7 @@
   {
     "id": "ceload",
     "name": "ceload",
-    "description": "A Bring Your Own Vulnerable Driver tool that allows you to load dbg64.sys and access a plethora of privileged functions.",
+    "description": "A Bring Your Own Vulnerable Driver tool that allows you to load dbk64.sys and access a plethora of privileged functions.",
     "language": "C++",
     "category": "Research",
     "image": "/projects/ceload.png",

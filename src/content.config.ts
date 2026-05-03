@@ -22,6 +22,7 @@ const projects = defineCollection({
     category: z.string(),
     image: z.string().optional(),
     url: z.string(),
+    featured: z.boolean().optional(),
   })
 });
 
