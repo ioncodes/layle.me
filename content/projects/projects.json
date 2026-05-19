@@ -12,7 +12,7 @@
   {
     "id": "ayyboy-advance",
     "name": "ayyboy advance",
-    "description": "A GameBoy Advance emulator with an elaborate CPU and GPU debugger as well as Rhai scripting support.",
+    "description": "A GameBoy Advance emulator with a very advanced CPU and GPU debugger as well as Rhai scripting support.",
     "language": "Rust",
     "category": "Emulation",
     "image": "/projects/ayyboy-advance.png",
