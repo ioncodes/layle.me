@@ -1,0 +1,28 @@
+---
+const records = [
+  { bytes: ['01', '28', '64', 'DC', 'FF'], label: 'Keep position 01', skip: false },
+  { bytes: ['FF', 'E6', '3C', '32', 'FF'], label: 'Discard this record', skip: true },
+  { bytes: ['02', '28', '64', 'DC', 'FF'], label: 'Keep position 02', skip: false },
+];
+const fields = ['index', 'R', 'G', 'B', 'alpha'];
+---
+
+<div class="vertex-records not-prose" role="img" aria-label="Three five-byte records. Keep position 01 and its blue color; consume and discard index FF and all four red color bytes; keep position 02 and its blue color. FF in the alpha field means opaque, not skip.">
+  {records.map(record => (
+    <div class:list={['record', { skipped: record.skip }]} aria-hidden="true">
+      <div class="bytes">{record.bytes.map((byte, i) => <div><span>{byte}</span><small>{fields[i]}</small></div>)}</div>
+      <p>{record.label}</p>
+    </div>
+  ))}
+</div>
+
+<style>
+  .vertex-records { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin: 2rem 0; }
+  .bytes { display: grid; grid-template-columns: repeat(5, 1fr); font-family: ui-monospace, monospace; }
+  .bytes div { text-align: center; min-width: 0; }
+  .bytes span { display: block; padding: .65rem 0; background: var(--muted); font-size: 1rem; }
+  .bytes small { display: block; padding-top: .35rem; color: var(--muted-foreground); font-size: .65rem; }
+  .record p { margin: .6rem 0 0; font-size: .8rem; text-align: center; }
+  .skipped .bytes span { background: color-mix(in srgb, #c08a22 20%, var(--background)); }
+  @media (max-width: 640px) { .vertex-records { grid-template-columns: 1fr; gap: 1.5rem; } .bytes small { font-size: .75rem; } }
+</style>

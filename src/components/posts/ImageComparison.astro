@@ -1,0 +1,51 @@
+---
+import '../../styles/gx-demos.css';
+
+interface Props {
+  before: string;
+  after: string;
+  beforeAlt: string;
+  afterAlt: string;
+  zoom?: { label: string; origin: string };
+  width?: number;
+  height?: number;
+}
+const { before, after, beforeAlt, afterAlt, zoom, width = 640, height = 448 } = Astro.props;
+---
+
+<gx-image-comparison class="gx-demo not-prose" style={zoom ? `--comparison-origin: ${zoom.origin}` : undefined}>
+  <figure>
+    <div class="gx-comparison-labels" aria-hidden="true"><span>Before</span><span>After</span></div>
+    <div class="gx-comparison">
+      <img src={after} alt={afterAlt} width={width} height={height} loading="lazy" />
+      <div class="gx-before"><img src={before} alt={beforeAlt} width={width} height={height} loading="lazy" /></div>
+      <div class="gx-divider" aria-hidden="true"></div>
+    </div>
+    <fieldset class="gx-comparison-controls" disabled>
+      {zoom && <label><input type="checkbox" data-zoom-toggle /> {zoom.label}</label>}
+      <label><span class="sr-only">Compare the original and fixed frames</span><input type="range" min="0" max="100" value="50" data-reveal /></label>
+    </fieldset>
+    <noscript><p><a href={before}>Before</a> / <a href={after}>After</a></p></noscript>
+  </figure>
+</gx-image-comparison>
+
+<script>
+  class ImageComparison extends HTMLElement {
+    connectedCallback() {
+      const range = this.querySelector<HTMLInputElement>('[data-reveal]')!;
+      const before = this.querySelector<HTMLElement>('.gx-before')!;
+      const divider = this.querySelector<HTMLElement>('.gx-divider')!;
+      const comparison = this.querySelector<HTMLElement>('.gx-comparison')!;
+      const update = () => {
+        before.style.clipPath = `inset(0 ${100 - Number(range.value)}% 0 0)`;
+        divider.style.left = `${range.value}%`;
+        range.setAttribute('aria-valuetext', `${range.value}% before, ${100 - Number(range.value)}% after`);
+        comparison.toggleAttribute('data-zoom', this.querySelector<HTMLInputElement>('[data-zoom-toggle]')?.checked ?? false);
+      };
+      this.oninput = update;
+      this.querySelector('fieldset')!.disabled = false;
+      update();
+    }
+  }
+  customElements.define('gx-image-comparison', ImageComparison);
+</script>

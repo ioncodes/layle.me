@@ -2,6 +2,10 @@
 author: "Layle"
 title: "RACEAC: Breaking Dead by Daylight's Integrity Checks"
 summary: "In an attempt to stop people from cheating by modifying game files, Dead by Daylight received an update that introduced integrity checks for the pak files/assets. Cheating was no longer possible. Unless…?"
+image:
+  alt: "Dead by Daylight SSL configuration viewed in a hex editor."
+  src: "/images/dbd/ssl-hex.png"
+  position: "left top"
 tags: ["reverse-engineering", "c++", "game-hacking", "anti-cheat"]
 date: 2021-06-03T22:00:00Z
 sticky: true

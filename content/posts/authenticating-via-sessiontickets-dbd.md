@@ -2,6 +2,10 @@
 author: "Layle"
 title: "Authenticating to Dead by Daylight Servers via Steam Session Tickets"
 summary: "In this post we'll be looking into grabbing a valid bhvrSession cookie without SSL sniffing."
+image:
+  alt: "A Steam authentication request and the Dead by Daylight server response."
+  src: "/images/dbd/steam-auth.png"
+  position: "center"
 tags: ["game-hacking", "man-in-the-middle", "steam"]
 date: 2023-05-08T08:00:00Z
 sticky: true

@@ -2,6 +2,10 @@
 author: "Layle"
 title: "A Story about a Russian DRM and Lego Rock Raiders"
 summary: "I was approached by \"The Research Realm\" - a collective aiming to preserve Lego's history - to create a No-CD crack and fix for a rare version of Lego Rock Raiders."
+image:
+  alt: "Lego Rock Raiders showing a completed mission beside debugging output."
+  src: "/images/lrr-ru/playthrough.png"
+  position: "right top"
 tags: ["reverse-engineering", "drm", "lego"]
 date: 2025-04-28T18:00:00Z
 sticky: true

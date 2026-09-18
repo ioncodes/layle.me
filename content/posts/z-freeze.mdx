@@ -1,0 +1,133 @@
+---
+author: "Layle"
+title: "z-freeze and Mario Golf's Disappearing Menu"
+summary: "Mario Golf's menu signs were being covered by the sky because Gecko was missing z-freeze, a GPU feature that lets one triangle borrow another triangle's depth."
+image:
+  alt: "Mario Golf's player selection menu with the tops of its signs hidden by the sky."
+  src: "/images/gecko/z-freeze-before.png"
+  position: "50% 20%"
+tags: ["emulation", "gamecube", "wii", "graphics", "gecko"]
+date: 2026-09-17T18:00:00Z
+sticky: true
+---
+
+import ImageComparison from '../../src/components/posts/ImageComparison.astro';
+import ZFreezeDemo from '../../src/components/posts/ZFreezeDemo.astro';
+import TestPanels from '../../src/components/posts/TestPanels.astro';
+
+While working on [Gecko](https://github.com/ioncodes/gecko), my GameCube and Wii emulator, I noticed the top of the player selection signs was missing in *Mario Golf: Toadstool Tour*. Everything below them looked fine.
+
+Look at the portraits just below "MAIN MENU":
+
+<ImageComparison
+  before="/images/gecko/z-freeze-before.png"
+  after="/images/gecko/z-freeze-after.png"
+  beforeAlt="Mario Golf before the fix: the sky covers the tops of the four player selection signs."
+  afterAlt="The same Mario Golf scene after the fix: all four signs are complete."
+/>
+
+The signs had their full geometry, but a later draw was painting the sky over them because Gecko hadn't implemented **z-freeze**, a feature of the GameCube's graphics processor, [GX](https://www.gc-forever.com/wiki/index.php?title=Hardware_Acronyms#GP,_GX). Dolphin's [January 2015 report](https://dolphin-emu.org/blog/2015/02/01/dolphin-progress-report-january-2015/) also touches on this topic, I recommend giving it a read!
+
+## A bit of background
+
+A **framebuffer** stores each pixel's color, whereas a **depth buffer**, or Z-buffer, stores how far away the surface at that pixel is.
+
+If we draw a red rectangle followed by a larger blue one, blue doesn't automatically cover red because GX runs a [depth test](https://wikis.khronos.org/opengl/Depth_Test), comparing its depth with the value already stored at each pixel.
+
+For these examples, **smaller means nearer** and we'll use the comparison "less than or equal":
+
+```text
+incoming depth ≤ stored depth: the new pixel passes
+incoming depth > stored depth: keep the old pixel
+```
+
+Blue replaces red if it's nearer or equally far away and also updates the stored depth if depth writes are enabled. Testing depth and writing depth are separate settings.
+
+Normally, a triangle's own position determines its depth, but z-freeze lets a later draw use a depth plane established by an earlier triangle instead.
+
+## Borrowing depth
+
+To see what changes, draw two panels with these steps, enabling z-freeze only for the final draw in the right panel:
+
+1. Draw a red rectangle at depth **0.50**, writing both color and depth.
+2. Draw a tiny triangle at depth **0.75**, with color writes and depth writes disabled.
+3. Draw a larger blue rectangle at depth **0.25**, with color and depth writes enabled again.
+
+The tiny triangle doesn't change any pixels, but it still establishes a depth plane for the blue rectangle to reuse.
+
+On the left, blue uses its own depth of `0.25`, so `0.25 ≤ 0.50` passes and it covers red completely. On the right, blue borrows `0.75` from the reference triangle, so `0.75 ≤ 0.50` fails and red stays visible. Outside red's outline, blue still passes against the background's cleared far depth.
+
+<TestPanels kind="z-freeze" />
+
+## Freezing a plane
+
+Our reference triangle has the same depth at every corner, but a tilted triangle needs a **plane equation** instead of a single value:
+
+```text
+depth(x, y) = A * x + B * y + C
+```
+
+In this equation, `x` and `y` are screen coordinates, `A` and `B` describe the horizontal and vertical slopes and `C` sets the depth at the origin. Three corners determine the plane unless they collapse into a line or point.
+
+For example, if the triangle gives us `depth = 0.2 + 0.001 × x`, the depth is `0.3` at `x = 100` and `0.4` at `x = 200`. With z-freeze enabled, the next shape uses this same rule, including for pixels beyond the original triangle's edges.
+
+New triangles can replace the reference plane while z-freeze is off, whereas enabling it preserves the last plane. The next draw still has its own outline, colors and texture coordinates, but gets its depth from the saved equation.
+
+Try switching between a flat and sloped reference in the graph below, which follows the rectangle's center row with depth increasing downward.
+
+<ZFreezeDemo />
+
+With the sloped reference, blue is nearer on the left and farther away on the right because the frozen equation still gives a different result at each pixel. Depth tests and writes continue to work as usual.
+
+## Back to Mario Golf
+
+The game's menu does something similar to the rectangle example:
+
+1. Draw a small shape to establish a depth plane.
+2. Enable z-freeze.
+3. Draw the sky over the top 112 framebuffer rows using that saved plane.
+
+The signs take the role of our red rectangle and the sky takes the role of blue, but Gecko used the sky's own near depth and let it cover the signs. That draw ended at row 112, explaining the straight cutoff.
+
+In this capture, the saved plane was approximately:
+
+```text
+Z24 = 2.650141 * y + 16755356
+```
+
+`Z24` is the console's 24-bit depth value, ranging from `0` to `16'777'215`. At pixel `(100, 80)` on Mario's sign, the depth buffer contained **16'641'130**, whereas the sky's own depth was **0**. Without z-freeze, the sky passed the comparison:
+
+```text
+0 ≤ 16'641'130 passes, so the sky covers the sign
+```
+
+With z-freeze enabled, the sky uses the saved equation instead. The center of that pixel is at `y = 80.5`, giving us:
+
+```text
+sky depth = 2.650141 × 80.5 + 16'755'356
+          ≈ 16'755'569
+
+16'755'569 ≤ 16'641'130 fails, so the sign stays visible
+```
+
+On our earlier 0-1 scale, the sign is at about `0.9919` and the sky at `0.9987`, so the sky is farther away. At a background pixel on the same row, the stored depth was `16'777'215`, so `16'755'569 ≤ 16'777'215` still passes. The sky fills the background while leaving the sign alone.
+
+## Decals in Mario Power Tennis
+
+The fix also stopped the floor decals flickering on *Mario Power Tennis*'s Plaza court. A decal is a detail drawn over a surface, like a sticker on a floor, whose depth is often nearly identical to the surface beneath it. Rounding differences can then make them take turns winning the depth test, causing **Z-fighting**, whereas sharing a depth plane keeps the comparison consistent.
+
+<figure className="not-prose my-8">
+  <video className="block h-auto w-full" controls loop playsInline preload="metadata" width="940" height="342" aria-label="Plaza court comparison: z-freeze disabled on the left and enabled on the right.">
+    <source src="/videos/gecko/plaza-z-freeze.mp4" type="video/mp4" />
+    <a href="/videos/gecko/plaza-z-freeze.mp4">Download the Plaza comparison.</a>
+  </video>
+  <figcaption className="mt-2 text-center text-sm text-muted-foreground">Watch the missing bands in the floor logos on the left.</figcaption>
+</figure>
+
+## Implementing it
+
+Homebrew using [libogc](https://github.com/devkitPro/libogc) enables the feature with `GX_SetCoPlanar(GX_ENABLE)`. You can try the red and blue example yourself by building the [standalone test](https://github.com/ioncodes/gamecube-wii-tests/tree/master/z-freeze) with `make z-freeze` and running `build/z-freeze.dol`.
+
+Gecko's [plane calculation](https://github.com/ioncodes/gecko/blob/07a030f8d1aae494cac0e061c135ed0c75b45ff9/crates/gecko/src/flipper/gx/depth.rs) and [depth shader](https://github.com/ioncodes/gecko/blob/07a030f8d1aae494cac0e061c135ed0c75b45ff9/crates/backend-wgpu/src/shaders/main.wesl) contain the implementation. I've also written about the triangle stretching out of Luigi's hand in the [vertex-skip post](/posts/vertex-skip/).
+
+All that trouble over a triangle that doesn't draw any pixels :^)

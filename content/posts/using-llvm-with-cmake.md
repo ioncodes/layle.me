@@ -2,6 +2,10 @@
 author: "Layle"
 title: "LLVM with CMake: It's easier than you'd think!"
 summary: "Have you ever wondered how you can set up LLVM using CMake? It's actually easier than you might think. All thanks to an amazing fork of a project called hunter."
+image:
+  alt: "The LLVM dragon logo."
+  src: "/images/llvm/dragon.png"
+  fit: contain
 tags: ["llvm", "c++", "cmake"]
 date: 2021-08-22T22:00:00Z
 sticky: false

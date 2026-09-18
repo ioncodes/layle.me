@@ -1,0 +1,49 @@
+---
+import { parseHTML } from 'linkedom';
+import { freezeResult, depthPlot } from './gx-plots';
+import '../../styles/gx-demos.css';
+const { document } = parseHTML('<html></html>');
+---
+
+<gx-z-freeze class="gx-demo not-prose">
+  <fieldset class="gx-controls" disabled>
+    <label class="gx-toggle"><input type="checkbox" data-freeze checked /> z-freeze</label>
+    <label>Reference plane<select data-reference-mode><option value="flat">Flat: depth 0.75</option><option value="slope">Sloped: 0.20 to 0.80</option></select></label>
+  </fieldset>
+  <div class="gx-figures">
+    <div class="gx-result" data-result set:html={freezeResult({ document }).outerHTML} />
+    <div>
+      <div class="gx-plot" data-plot set:html={depthPlot({ document }).outerHTML} />
+      <div class="gx-legend"><span class="gx-blue">Incoming</span><span class="gx-red">Stored</span><span class="gx-reference">Reference</span></div>
+    </div>
+  </div>
+  <p class="sr-only" data-status aria-live="polite">Blue uses the saved depth 0.75 and fails against red's 0.50.</p>
+  <noscript><p>The static result shows z-freeze enabled. Enable JavaScript to change the plane.</p></noscript>
+</gx-z-freeze>
+
+<script>
+  import { freezeResult, depthPlot } from './gx-plots';
+  class ZFreezeDemo extends HTMLElement {
+    observer?: ResizeObserver;
+    connectedCallback() {
+      const freeze = this.querySelector<HTMLInputElement>('[data-freeze]')!;
+      const mode = this.querySelector<HTMLSelectElement>('[data-reference-mode]')!;
+      const plot = this.querySelector<HTMLElement>('[data-plot]')!;
+      let lastWidth = 0;
+      const draw = () => {
+        const frozen = freeze.checked, sloped = mode.value === 'slope';
+        lastWidth = Math.round(plot.clientWidth);
+        this.querySelector('[data-result]')!.replaceChildren(freezeResult({ frozen, sloped }));
+        plot.replaceChildren(depthPlot({ frozen, sloped, width: Math.max(230, lastWidth) }));
+        this.querySelector('[data-status]')!.textContent = !frozen ? 'Blue uses its own depth 0.25 and covers red.' : sloped ? 'The reference crosses depth 0.50 at the center. Blue covers the left half of red; the right half remains visible.' : "Blue uses the saved depth 0.75 and fails against red's 0.50.";
+      };
+      this.onchange = draw;
+      this.querySelector('fieldset')!.disabled = false;
+      this.observer = new ResizeObserver(() => { if (Math.round(plot.clientWidth) !== lastWidth) draw(); });
+      this.observer.observe(plot);
+      draw();
+    }
+    disconnectedCallback() { this.observer?.disconnect(); }
+  }
+  customElements.define('gx-z-freeze', ZFreezeDemo);
+</script>

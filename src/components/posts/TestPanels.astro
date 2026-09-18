@@ -1,0 +1,25 @@
+---
+import { parseHTML } from 'linkedom';
+import { freezeResult, vertexPanel } from './gx-plots';
+const { document } = parseHTML('<html></html>');
+interface Props { kind: 'z-freeze' | 'vertex-skip' }
+const { kind } = Astro.props;
+const freeze = kind === 'z-freeze';
+const panels = freeze ? ['z-freeze off', 'z-freeze on'] : ['Direct', 'Index8', 'Index16'];
+---
+
+<div class="test-panels not-prose" role="img" aria-label={freeze ? 'Expected test result: with z-freeze off, solid blue on the left; with z-freeze on, blue with a red center on the right.' : 'Expected test result: three identical solid blue rectangles for direct vertices, Index8 with a skip, and Index16 with a skip.'}>
+  {panels.map((label, index) => (
+    <div aria-hidden="true">
+      <Fragment set:html={(freeze ? freezeResult({ frozen: index === 1, document }) : vertexPanel({ document })).outerHTML} />
+      <span>{label}</span>
+    </div>
+  ))}
+</div>
+
+<style>
+  .test-panels { display: flex; gap: 1rem; max-width: 600px; margin: 2rem auto; }
+  .test-panels > div { flex: 1; min-width: 0; text-align: center; }
+  .test-panels :global(svg) { display: block; width: 100%; height: auto; }
+  span { display: block; margin-top: .5rem; color: var(--muted-foreground); font-size: .8rem; }
+</style>

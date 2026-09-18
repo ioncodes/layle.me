@@ -1,0 +1,37 @@
+---
+import { parseHTML } from 'linkedom';
+import { stripPlot } from './gx-plots';
+import '../../styles/gx-demos.css';
+const { document } = parseHTML('<html></html>');
+---
+
+<gx-vertex-skip class="gx-demo not-prose">
+  <fieldset class="gx-controls" disabled>
+    <label>Interpretation<select data-mode><option value="skip">Skip vertex (correct)</option><option value="fetch">Array entry (incorrect)</option><option value="restart">Restart strip (incorrect)</option></select></label>
+    <label>Marker location<select data-location><option value="middle">Middle (console test)</option><option value="end">End (extra example)</option></select></label>
+  </fieldset>
+  <p class="gx-tokens" data-stream>0 · 1 · 0xff (SKIP) · 2 · 3</p>
+  <div class="gx-result" data-result set:html={stripPlot('skip', 'middle', { document }).outerHTML} />
+  <p class="sr-only" data-status aria-live="polite">2 triangles. The skipped record adds no corner; the strip stays connected.</p>
+  <noscript><p>The static result shows correct skipping. Enable JavaScript to compare it with restarting or fetching the array entry.</p></noscript>
+</gx-vertex-skip>
+
+<script>
+  import { stripModel, stripPlot, type StripMode, type MarkerLocation } from './gx-plots';
+  class VertexSkipDemo extends HTMLElement {
+    connectedCallback() {
+      const draw = () => {
+        const mode = this.querySelector<HTMLSelectElement>('[data-mode]')!.value as StripMode;
+        const location = this.querySelector<HTMLSelectElement>('[data-location]')!.value as MarkerLocation;
+        const { stream, status } = stripModel(mode, location);
+        this.querySelector('[data-stream]')!.textContent = stream;
+        this.querySelector('[data-status]')!.textContent = status;
+        this.querySelector('[data-result]')!.replaceChildren(stripPlot(mode, location));
+      };
+      this.onchange = draw;
+      this.querySelector('fieldset')!.disabled = false;
+      draw();
+    }
+  }
+  customElements.define('gx-vertex-skip', VertexSkipDemo);
+</script>

@@ -1,15 +1,15 @@
 ---
 import {
   Card,
-  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import type { CollectionEntry } from "astro:content";
 
 export interface Props {
-  post: any;
+  post: CollectionEntry<'posts'>;
   isSticky?: boolean;
 }
 
@@ -18,19 +18,30 @@ const { post, isSticky = false } = Astro.props;
 
 <a href={`/posts/${post.id}`} class="block group">
   <Card
-    className="transition-all duration-200 hover:shadow-lg hover:scale-[1.02] cursor-pointer relative"
+    className="transition-all duration-200 hover:shadow-lg hover:scale-[1.02] cursor-pointer relative overflow-hidden gap-0 py-0 sm:flex-row"
   >
-    {
-      isSticky && (
-        <div class="absolute top-3 right-3 text-yellow-600 text-lg">📌</div>
-      )
-    }
-    <CardHeader className={isSticky ? "pr-10" : ""}>
-      <CardTitle
-        className="group-hover:text-violet-400 transition-colors text-xl"
-      >
-        {post.data.title || "Untitled"}
-      </CardTitle>
+    <div class:list={[
+      "relative aspect-[2/1] shrink-0 overflow-hidden sm:aspect-auto sm:w-52",
+      post.data.image.fit === 'contain' ? 'bg-white' : 'bg-muted',
+    ]}>
+      <img
+        src={post.data.image.src}
+        alt=""
+        width="640"
+        height="448"
+        loading="lazy"
+        decoding="async"
+        class:list={['absolute inset-0 h-full w-full', { 'p-6': post.data.image.fit === 'contain' }]}
+        style={{ objectFit: post.data.image.fit, objectPosition: post.data.image.position }}
+      />
+    </div>
+    <CardHeader className="min-w-0 flex-1 p-6">
+      <div class="flex items-start justify-between gap-3">
+        <CardTitle className="group-hover:text-violet-400 transition-colors text-xl">
+          {post.data.title || "Untitled"}
+        </CardTitle>
+        {isSticky && <Badge variant="secondary">Pinned</Badge>}
+      </div>
       {
         post.data.summary && (
           <CardDescription>{post.data.summary}</CardDescription>
