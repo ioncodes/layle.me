@@ -16,6 +16,7 @@ const posts = defineCollection({
     tags: z.array(z.string()),
     date: z.coerce.date(),
     sticky: z.boolean().optional(),
+    unlisted: z.boolean().default(false),
   })
 });
 
