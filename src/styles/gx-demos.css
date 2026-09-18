@@ -40,11 +40,15 @@ gx-vertex-skip.gx-demo .gx-result { max-width: 560px; margin: auto; }
 .gx-demo .gx-comparison { position: relative; overflow: hidden; background: #111; }
 .gx-demo .gx-comparison img { display: block; width: 100%; height: auto; margin: 0; }
 .gx-demo .gx-before { position: absolute; inset: 0; clip-path: inset(0 50% 0 0); }
-.gx-demo .gx-divider { position: absolute; top: 0; bottom: 0; left: 50%; border-left: 2px solid white; filter: drop-shadow(0 0 2px #111); }
+.gx-demo .gx-divider { position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; background: white; pointer-events: none; }
 .gx-demo .gx-comparison[data-zoom] img { transform: scale(2); transform-origin: var(--comparison-origin, center); }
-.gx-demo .gx-comparison-labels { display: flex; justify-content: space-between; margin-bottom: .5rem; font-size: .875rem; }
 .gx-demo .gx-comparison-controls { margin-top: 1rem; }
-.gx-demo .gx-comparison-controls label + label { margin-top: .75rem; }
+.gx-demo .gx-comparison-slider { position: relative; padding-bottom: 1.75rem; }
+.gx-demo .gx-comparison-slider input { margin: 0; }
+.gx-demo .gx-comparison-labels { position: absolute; bottom: 0; left: clamp(4.75rem, var(--comparison-position, 50%), calc(100% - 4.75rem)); display: flex; gap: 1.25rem; transform: translateX(-50%); font-size: 1rem; font-weight: 650; line-height: 1.25; pointer-events: none; }
+.gx-demo .gx-comparison-labels span { width: 4rem; text-align: center; }
+.gx-demo .gx-comparison-controls > label { margin-top: .75rem; }
+.gx-demo .gx-comparison-caption { margin-top: .75rem; text-align: center; font-size: .875rem; color: var(--muted-foreground); }
 .gx-demo a { color: var(--primary); text-decoration: underline; text-underline-offset: 3px; }
 @media (max-width: 480px) {
   .gx-demo .gx-controls { grid-template-columns: 1fr; }

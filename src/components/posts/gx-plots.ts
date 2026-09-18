@@ -56,7 +56,7 @@ export function stripModel(mode: StripMode, location: MarkerLocation) {
   const status = mode === 'skip' ? '2 triangles. The skipped record adds no corner; the strip stays connected.'
     : mode === 'fetch' ? '3 triangles. The reserved index becomes point P, adding unwanted geometry.'
     : location === 'middle' ? '0 triangles. Each restarted piece has only two vertices.'
-    : '2 triangles. A trailing restart happens to look like a skip. Put the marker in the middle to distinguish them.';
+    : '2 triangles. A trailing restart happens to look like a skip. Put 0xff in the middle to distinguish them.';
   return { stream: stream.map(i => i === 4 ? '0xff (SKIP)' : i).join(' · '), triangles, status };
 }
 

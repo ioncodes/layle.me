@@ -33,6 +33,19 @@ The signs had their full geometry, but a later draw was painting the sky over th
 
 A **framebuffer** stores each pixel's color, whereas a **depth buffer**, or Z-buffer, stores how far away the surface at that pixel is.
 
+<ImageComparison
+  before="/images/gecko/mario-kart-color.webp"
+  after="/images/gecko/mario-kart-depth.webp"
+  beforeLabel="Color"
+  afterLabel="Depth"
+  comparisonLabel="Compare Mario Kart Wii's color and depth buffers"
+  beforeAlt="Mario and other racers on Luigi Circuit, with the road stretching toward distant hills."
+  afterAlt="The same scene's depth buffer: Mario and the nearby road are dark, while the distant racers and scenery are progressively lighter."
+  caption="Mario Kart Wii: darker is nearer and lighter is farther away, with contrast expanded."
+  width={811}
+  height={456}
+/>
+
 If we draw a red rectangle followed by a larger blue one, blue doesn't automatically cover red because GX runs a [depth test](https://wikis.khronos.org/opengl/Depth_Test), comparing its depth with the value already stored at each pixel.
 
 For these examples, **smaller means nearer** and we'll use the comparison "less than or equal":
@@ -68,9 +81,19 @@ Our reference triangle has the same depth at every corner, but a tilted triangle
 depth(x, y) = A * x + B * y + C
 ```
 
-In this equation, `x` and `y` are screen coordinates, `A` and `B` describe the horizontal and vertical slopes and `C` sets the depth at the origin. Three corners determine the plane unless they collapse into a line or point.
+In this equation, `x` and `y` are screen coordinates, `A` and `B` describe the horizontal and vertical slopes and `C` sets the depth at the origin. The coefficients come from the triangle's three vertices after they're transformed to screen coordinates: the equation must give the right depth at every corner.
 
-For example, if the triangle gives us `depth = 0.2 + 0.001 × x`, the depth is `0.3` at `x = 100` and `0.4` at `x = 200`. With z-freeze enabled, the next shape uses this same rule, including for pixels beyond the original triangle's edges.
+For example, take these three corners, written as `(x, y, depth)`:
+
+```text
+(  0,   0, 0.20) gives C = 0.20
+(100,   0, 0.30) gives 100 × A + 0.20 = 0.30, so A = 0.001
+(  0, 100, 0.40) gives 100 × B + 0.20 = 0.40, so B = 0.002
+
+depth(x, y) = 0.001 × x + 0.002 × y + 0.20
+```
+
+At `(100, 50)`, that gives `0.10 + 0.10 + 0.20 = 0.40`. With z-freeze enabled, the next shape uses this same rule, including for pixels beyond the original triangle's edges. Any three corners determine a unique plane this way unless they collapse into a line or point on screen.
 
 New triangles can replace the reference plane while z-freeze is off, whereas enabling it preserves the last plane. The next draw still has its own outline, colors and texture coordinates, but gets its depth from the saved equation.
 

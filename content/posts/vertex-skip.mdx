@@ -44,7 +44,7 @@ In a [triangle strip](https://wikis.khronos.org/opengl/Primitive#Triangle_primit
 1 ------ 3
 ```
 
-Sending `0, 1, 2, 3` makes triangles `0, 1, 2` and `2, 1, 3`, which share the diagonal between corners 1 and 2. Swapping the first two vertices of every other triangle preserves their **winding order**, so both face the same way.
+Sending `0, 1, 2, 3` makes triangles `0, 1, 2` and `2, 1, 3`, which share the diagonal between corners 1 and 2. GX uses the order of a triangle's vertices to tell its front from its back: going around them clockwise faces the opposite way to going counterclockwise. Swapping the first two vertices of every other triangle keeps this **winding order** consistent, so both face the same way.
 
 Games can send coordinates directly or use **indices** into a position array, where index `2` means "use position number 2" and saves us from sending those coordinates again.
 
@@ -73,9 +73,9 @@ Select "Array entry" below to fetch the reserved index as point P and show the t
 
 <VertexSkipDemo />
 
-Move the marker to the end: fetching P adds one red triangle to the blue rectangle, just like Luigi's spike.
+Move `0xff` to the end: fetching P adds one red triangle to the blue rectangle, just like Luigi's spike.
 
-With the marker in the middle, the demo's restart option splits the strip into two pairs of vertices, neither of which can form a triangle. The dashed outline is just a guide.
+With `0xff` in the middle, the demo's restart option splits the strip into two pairs of vertices, neither of which can form a triangle. The dashed outline is just a guide.
 
 ## Back to Luigi
 
@@ -125,4 +125,4 @@ My [test](https://github.com/ioncodes/gamecube-wii-tests/tree/master/vertex-skip
 
 The test stores a displaced position at the reserved array entries and makes the skipped records red, so an incorrect lookup produces obvious stray geometry. Build it with `make vertex-skip` and run `build/vertex-skip.dol`.
 
-Gecko's implementation lives in [`filter_skipped_vertices`](https://github.com/ioncodes/gecko/blob/07a030f8d1aae494cac0e061c135ed0c75b45ff9/crates/gecko/src/flipper/gx/vertex.rs). All that trouble over a vertex that wasn't supposed to exist :)
+Gecko's implementation lives in [`filter_skipped_vertices`](https://github.com/ioncodes/gecko/blob/07a030f8d1aae494cac0e061c135ed0c75b45ff9/crates/gecko/src/flipper/gx/vertex.rs#L21). All that trouble over a vertex that wasn't supposed to exist :)

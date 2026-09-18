@@ -6,26 +6,33 @@ interface Props {
   after: string;
   beforeAlt: string;
   afterAlt: string;
+  beforeLabel?: string;
+  afterLabel?: string;
+  comparisonLabel?: string;
+  caption?: string;
   zoom?: { label: string; origin: string };
   width?: number;
   height?: number;
 }
-const { before, after, beforeAlt, afterAlt, zoom, width = 640, height = 448 } = Astro.props;
+const { before, after, beforeAlt, afterAlt, beforeLabel = 'Before', afterLabel = 'After', comparisonLabel = 'Compare the original and fixed frames', caption, zoom, width = 640, height = 448 } = Astro.props;
 ---
 
-<gx-image-comparison class="gx-demo not-prose" style={zoom ? `--comparison-origin: ${zoom.origin}` : undefined}>
+<gx-image-comparison class="gx-demo not-prose" data-before-label={beforeLabel} data-after-label={afterLabel} style={zoom ? `--comparison-origin: ${zoom.origin}` : undefined}>
   <figure>
-    <div class="gx-comparison-labels" aria-hidden="true"><span>Before</span><span>After</span></div>
     <div class="gx-comparison">
       <img src={after} alt={afterAlt} width={width} height={height} loading="lazy" />
       <div class="gx-before"><img src={before} alt={beforeAlt} width={width} height={height} loading="lazy" /></div>
       <div class="gx-divider" aria-hidden="true"></div>
     </div>
     <fieldset class="gx-comparison-controls" disabled>
+      <div class="gx-comparison-slider">
+        <input type="range" min="0" max="100" value="50" data-reveal aria-label={comparisonLabel} />
+        <div class="gx-comparison-labels" aria-hidden="true"><span>{beforeLabel}</span><span>{afterLabel}</span></div>
+      </div>
       {zoom && <label><input type="checkbox" data-zoom-toggle /> {zoom.label}</label>}
-      <label><span class="sr-only">Compare the original and fixed frames</span><input type="range" min="0" max="100" value="50" data-reveal /></label>
     </fieldset>
-    <noscript><p><a href={before}>Before</a> / <a href={after}>After</a></p></noscript>
+    {caption && <figcaption class="gx-comparison-caption">{caption}</figcaption>}
+    <noscript><p><a href={before}>{beforeLabel}</a> / <a href={after}>{afterLabel}</a></p></noscript>
   </figure>
 </gx-image-comparison>
 
@@ -39,7 +46,8 @@ const { before, after, beforeAlt, afterAlt, zoom, width = 640, height = 448 } = 
       const update = () => {
         before.style.clipPath = `inset(0 ${100 - Number(range.value)}% 0 0)`;
         divider.style.left = `${range.value}%`;
-        range.setAttribute('aria-valuetext', `${range.value}% before, ${100 - Number(range.value)}% after`);
+        this.style.setProperty('--comparison-position', `${range.value}%`);
+        range.setAttribute('aria-valuetext', `${range.value}% ${this.dataset.beforeLabel!.toLowerCase()}, ${100 - Number(range.value)}% ${this.dataset.afterLabel!.toLowerCase()}`);
         comparison.toggleAttribute('data-zoom', this.querySelector<HTMLInputElement>('[data-zoom-toggle]')?.checked ?? false);
       };
       this.oninput = update;

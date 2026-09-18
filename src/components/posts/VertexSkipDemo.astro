@@ -8,7 +8,7 @@ const { document } = parseHTML('<html></html>');
 <gx-vertex-skip class="gx-demo not-prose">
   <fieldset class="gx-controls" disabled>
     <label>Interpretation<select data-mode><option value="skip">Skip vertex (correct)</option><option value="fetch">Array entry (incorrect)</option><option value="restart">Restart strip (incorrect)</option></select></label>
-    <label>Marker location<select data-location><option value="middle">Middle (console test)</option><option value="end">End (extra example)</option></select></label>
+    <label><code>0xff</code> location<select data-location><option value="middle">Middle (console test)</option><option value="end">End (extra example)</option></select></label>
   </fieldset>
   <p class="gx-tokens" data-stream>0 · 1 · 0xff (SKIP) · 2 · 3</p>
   <div class="gx-result" data-result set:html={stripPlot('skip', 'middle', { document }).outerHTML} />
