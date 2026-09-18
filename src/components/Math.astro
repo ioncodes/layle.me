@@ -1,0 +1,21 @@
+---
+import katex from 'katex';
+import 'katex/dist/katex.min.css';
+
+interface Props {
+  tex: string;
+  block?: boolean;
+}
+const { tex, block = false } = Astro.props;
+const html = katex.renderToString(tex, { output: 'htmlAndMathml', strict: 'error' });
+---
+
+{block ? <div class="math-block not-prose" set:html={html} /> : <span class="math-inline" set:html={html} />}
+
+<style>
+  .math-block { margin: 1.5rem 0; color: var(--foreground); text-align: center; line-height: 2; font-size: 1rem; text-wrap: balance; }
+  .math-inline :global(.katex) { font-size: 1.1em; }
+  @media (max-width: 620px) {
+    .math-block { font-size: .9rem; }
+  }
+</style>

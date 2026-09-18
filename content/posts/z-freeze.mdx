@@ -15,6 +15,8 @@ unlisted: true
 import ImageComparison from '../../src/components/posts/ImageComparison.astro';
 import ZFreezeDemo from '../../src/components/posts/ZFreezeDemo.astro';
 import TestPanels from '../../src/components/posts/TestPanels.astro';
+import DepthPlaneDerivation from '../../src/components/posts/DepthPlaneDerivation.astro';
+import Math from '../../src/components/Math.astro';
 
 While working on [Gecko](https://github.com/ioncodes/gecko), my GameCube and Wii emulator, I noticed that the upper parts of the player selection signs were missing in *Mario Golf: Toadstool Tour*. Everything below them looked fine.
 
@@ -39,8 +41,8 @@ A **framebuffer** stores each pixel's color, whereas a **depth buffer**, or Z-bu
   beforeLabel="Color"
   afterLabel="Depth"
   comparisonLabel="Compare Mario Kart Wii's color and depth buffers"
-  beforeAlt="Mario and other racers on Luigi Circuit, with the road stretching toward distant hills."
-  afterAlt="The same scene's depth buffer: Mario and the nearby road are dark, while the distant racers and scenery are progressively lighter."
+  beforeAlt="Mario driving between nearby item boxes, with other racers and hills farther along Luigi Circuit."
+  afterAlt="The same scene's depth buffer: Mario, the nearby item boxes and the road are dark, while distant racers and scenery are lighter."
   caption="Mario Kart Wii: darker is nearer and lighter is farther away, with contrast expanded."
   width={811}
   height={456}
@@ -50,10 +52,9 @@ If we draw a red rectangle followed by a larger blue one, blue doesn't automatic
 
 For these examples, **smaller means nearer** and we'll use the comparison "less than or equal":
 
-```text
-incoming depth ≤ stored depth: the new pixel passes
-incoming depth > stored depth: keep the old pixel
-```
+<Math block tex={String.raw`\text{incoming depth} \le \text{stored depth}`} />
+
+The new pixel passes if this is true, whereas the old pixel stays if it is false.
 
 Blue replaces red if it's nearer or equally far away and also updates the stored depth if depth writes are enabled. Testing depth and writing depth are separate settings.
 
@@ -69,7 +70,7 @@ To see what changes, draw two panels with these steps, enabling z-freeze only fo
 
 The tiny triangle doesn't change any pixels, but it still establishes a depth plane for the blue rectangle to reuse.
 
-On the left, blue uses its own depth of `0.25`, so `0.25 ≤ 0.50` passes and it covers red completely. On the right, blue borrows `0.75` from the reference triangle, so `0.75 ≤ 0.50` fails and red stays visible. Outside red's outline, blue still passes against the background's cleared far depth.
+On the left, blue uses its own depth of `0.25`, so <Math tex={String.raw`0.25 \le 0.50`} /> passes and it covers red completely. On the right, blue borrows `0.75` from the reference triangle, so <Math tex={String.raw`0.75 \le 0.50`} /> fails and red stays visible. Outside red's outline, blue still passes against the background's cleared far depth.
 
 <TestPanels kind="z-freeze" />
 
@@ -77,23 +78,15 @@ On the left, blue uses its own depth of `0.25`, so `0.25 ≤ 0.50` passes and it
 
 Our reference triangle has the same depth at every corner, but a tilted triangle needs a **plane equation** instead of a single value:
 
-```text
-depth(x, y) = A * x + B * y + C
-```
+<Math block tex={String.raw`\operatorname{depth}(x,y) = Ax + By + C`} />
 
 In this equation, `x` and `y` are screen coordinates, `A` and `B` describe the horizontal and vertical slopes and `C` sets the depth at the origin. The coefficients come from the triangle's three vertices after they're transformed to screen coordinates: the equation must give the right depth at every corner.
 
-For example, take these three corners, written as `(x, y, depth)`:
+For example, take these three corners, written as <Math tex={String.raw`(x,y,\operatorname{depth})`} />:
 
-```text
-(  0,   0, 0.20) gives C = 0.20
-(100,   0, 0.30) gives 100 × A + 0.20 = 0.30, so A = 0.001
-(  0, 100, 0.40) gives 100 × B + 0.20 = 0.40, so B = 0.002
+<DepthPlaneDerivation />
 
-depth(x, y) = 0.001 × x + 0.002 × y + 0.20
-```
-
-At `(100, 50)`, that gives `0.10 + 0.10 + 0.20 = 0.40`. With z-freeze enabled, the next shape uses this same rule, including for pixels beyond the original triangle's edges. Any three corners determine a unique plane this way unless they collapse into a line or point on screen.
+At <Math tex={String.raw`(100,50)`} />, that gives <Math tex={String.raw`0.10 + 0.10 + 0.20 = 0.40`} />. With z-freeze enabled, the next shape uses this same rule, including for pixels beyond the original triangle's edges. Any three corners determine a unique plane this way unless they collapse into a line or point on screen.
 
 New triangles can replace the reference plane while z-freeze is off, whereas enabling it preserves the last plane. The next draw still has its own outline, colors and texture coordinates, but gets its depth from the saved equation.
 
@@ -115,26 +108,21 @@ The signs take the role of our red rectangle and the sky takes the role of blue,
 
 In this capture, the saved plane was approximately:
 
-```text
-Z24 = 2.650141 * y + 16755356
-```
+<Math block tex={String.raw`Z_{24} = 2.650141y + \text{16'755'356}`} />
 
-`Z24` is the console's 24-bit depth value, ranging from `0` to `16'777'215`. At pixel `(100, 80)` on Mario's sign, the depth buffer contained **16'641'130**, whereas the sky's own depth was **0**. Without z-freeze, the sky passed the comparison:
+<Math tex="Z_{24}" /> is the console's 24-bit depth value, ranging from `0` to `16'777'215`. At pixel <Math tex={String.raw`(100,80)`} /> on Mario's sign, the depth buffer contained **16'641'130**, whereas the sky's own depth was **0**. Without z-freeze, <Math tex={String.raw`0 \le \text{16'641'130}`} /> passed, so the sky covered the sign.
 
-```text
-0 ≤ 16'641'130 passes, so the sky covers the sign
-```
+With z-freeze enabled, the sky uses the saved equation instead. The center of that pixel is at <Math tex={String.raw`y = 80.5`} />, giving us:
 
-With z-freeze enabled, the sky uses the saved equation instead. The center of that pixel is at `y = 80.5`, giving us:
+<Math block tex={String.raw`\begin{aligned}
+Z_{24} &= 2.650141 \times 80.5 \\
+       &\quad + \text{16'755'356} \\
+       &\approx \text{16'755'569}
+\end{aligned}`} />
 
-```text
-sky depth = 2.650141 × 80.5 + 16'755'356
-          ≈ 16'755'569
+Since <Math tex={String.raw`\text{16'755'569} > \text{16'641'130}`} />, the sky fails the depth test and the sign stays visible.
 
-16'755'569 ≤ 16'641'130 fails, so the sign stays visible
-```
-
-On our earlier 0-1 scale, the sign is at about `0.9919` and the sky at `0.9987`, so the sky is farther away. At a background pixel on the same row, the stored depth was `16'777'215`, so `16'755'569 ≤ 16'777'215` still passes. The sky fills the background while leaving the sign alone.
+On our earlier 0-1 scale, the sign is at about `0.9919` and the sky at `0.9987`, so the sky is farther away. At a background pixel on the same row, the stored depth was `16'777'215`, so <Math tex={String.raw`\text{16'755'569} \le \text{16'777'215}`} /> still passes. The sky fills the background while leaving the sign alone.
 
 ## Decals in Mario Power Tennis
 
