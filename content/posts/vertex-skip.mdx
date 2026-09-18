@@ -4,7 +4,7 @@ title: "vertex-skip: The Case of Luigi's Extra Triangle"
 summary: "A stray triangle stretched across Mario Golf's menu because Gecko drew a vertex the game had told it to skip."
 image:
   alt: "An extra triangle stretches from Luigi's hand in Mario Golf's character selection menu."
-  src: "/images/gecko/vertex-skip-before.png"
+  src: "/images/gecko/vertex-skip-before.webp"
   position: "40% 50%"
 tags: ["emulation", "gamecube", "wii", "graphics", "gecko"]
 date: 2026-09-17T18:05:00Z
@@ -22,8 +22,10 @@ While testing *Mario Golf: Toadstool Tour* in [Gecko](https://github.com/ioncode
 Look between Luigi's hand and Wario's portrait:
 
 <ImageComparison
-  before="/images/gecko/vertex-skip-before.png"
-  after="/images/gecko/vertex-skip-after.png"
+  before="/images/gecko/vertex-skip-before.webp"
+  after="/images/gecko/vertex-skip-after.webp"
+  width={2560}
+  height={1792}
   beforeAlt="Mario Golf before the fix: a thin diagonal triangle stretches from Luigi's hand across the menu."
   afterAlt="The same character selection frame after the fix, without the stray triangle."
   zoom={{ label: 'Enlarge the spike area', origin: '30% 60%' }}
@@ -126,3 +128,7 @@ My [test](https://github.com/ioncodes/gamecube-wii-tests/tree/master/vertex-skip
 The test stores a displaced position at the reserved array entries and makes the skipped records red, so an incorrect lookup produces obvious stray geometry. Build it with `make vertex-skip` and run `build/vertex-skip.dol`.
 
 Gecko's implementation lives in [`filter_skipped_vertices`](https://github.com/ioncodes/gecko/blob/07a030f8d1aae494cac0e061c135ed0c75b45ff9/crates/gecko/src/flipper/gx/vertex.rs#L21). All that trouble over a vertex that wasn't supposed to exist :)
+
+## Thank you
+
+A big thank you to Zayd for taking the time to proofread this post. He's the creator of [beanwii](https://github.com/zaydlang/beanwii) and also makes some really cool videos about emulation on [his YouTube channel](https://www.youtube.com/@beanulation1). If you enjoyed this post, go check them out!

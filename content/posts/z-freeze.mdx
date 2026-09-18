@@ -4,7 +4,7 @@ title: "z-freeze and Mario Golf's Disappearing Menu"
 summary: "Mario Golf's menu signs were being covered by the sky because Gecko was missing z-freeze, a GPU feature that lets one triangle borrow another triangle's depth."
 image:
   alt: "Mario Golf's player selection menu with the tops of its signs hidden by the sky."
-  src: "/images/gecko/z-freeze-before.png"
+  src: "/images/gecko/z-freeze-before.webp"
   position: "50% 20%"
 tags: ["emulation", "gamecube", "wii", "graphics", "gecko"]
 date: 2026-09-17T18:00:00Z
@@ -23,8 +23,10 @@ While working on [Gecko](https://github.com/ioncodes/gecko), my GameCube and Wii
 Look at the portraits just below "MAIN MENU":
 
 <ImageComparison
-  before="/images/gecko/z-freeze-before.png"
-  after="/images/gecko/z-freeze-after.png"
+  before="/images/gecko/z-freeze-before.webp"
+  after="/images/gecko/z-freeze-after.webp"
+  width={2560}
+  height={1792}
   beforeAlt="Mario Golf before the fix: the sky covers the tops of the four player selection signs."
   afterAlt="The same Mario Golf scene after the fix: all four signs are complete."
 />
@@ -44,8 +46,8 @@ A **framebuffer** stores each pixel's color, whereas a **depth buffer**, or Z-bu
   beforeAlt="Mario driving between nearby item boxes, with other racers and hills farther along Luigi Circuit."
   afterAlt="The same scene's depth buffer: Mario, the nearby item boxes and the road are dark, while distant racers and scenery are lighter."
   caption="Mario Kart Wii: darker is nearer and lighter is farther away, with contrast expanded."
-  width={811}
-  height={456}
+  width={3243}
+  height={1824}
 />
 
 If we draw a red rectangle followed by a larger blue one, blue doesn't automatically cover red because GX runs a [depth test](https://wikis.khronos.org/opengl/Depth_Test), comparing its depth with the value already stored at each pixel.
@@ -129,7 +131,7 @@ On our earlier 0-1 scale, the sign is at about `0.9919` and the sky at `0.9987`,
 The fix also stopped the floor decals flickering on *Mario Power Tennis*'s Plaza court. A decal is a detail drawn over a surface, like a sticker on a floor, whose depth is often nearly identical to the surface beneath it. Rounding differences can then make them take turns winning the depth test, causing **Z-fighting**, whereas sharing a depth plane keeps the comparison consistent.
 
 <figure className="not-prose my-8">
-  <video className="block h-auto w-full" controls loop playsInline preload="metadata" width="940" height="342" aria-label="Plaza court comparison: z-freeze disabled on the left and enabled on the right.">
+  <video className="block h-auto w-full" controls loop playsInline preload="metadata" width="3760" height="1368" aria-label="Plaza court comparison: z-freeze disabled on the left and enabled on the right.">
     <source src="/videos/gecko/plaza-z-freeze.mp4" type="video/mp4" />
     <a href="/videos/gecko/plaza-z-freeze.mp4">Download the Plaza comparison.</a>
   </video>
@@ -143,3 +145,7 @@ Homebrew using [libogc](https://github.com/devkitPro/libogc) enables the feature
 Gecko's [plane calculation](https://github.com/ioncodes/gecko/blob/07a030f8d1aae494cac0e061c135ed0c75b45ff9/crates/gecko/src/flipper/gx/depth.rs) and [depth shader](https://github.com/ioncodes/gecko/blob/07a030f8d1aae494cac0e061c135ed0c75b45ff9/crates/backend-wgpu/src/shaders/main.wesl) contain the implementation. I've also written about the triangle stretching out of Luigi's hand in the [vertex-skip post](/posts/vertex-skip/).
 
 All that trouble over a triangle that doesn't draw any pixels :^)
+
+## Thank you
+
+A big thank you to Zayd for taking the time to proofread this post. He's the creator of [beanwii](https://github.com/zaydlang/beanwii) and also makes some really cool videos about emulation on [his YouTube channel](https://www.youtube.com/@beanulation1). If you enjoyed this post, go check them out!
