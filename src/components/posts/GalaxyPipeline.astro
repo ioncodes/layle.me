@@ -1,0 +1,53 @@
+---
+import '../../styles/galaxy-wpar-demos.css';
+const steps=['Stage 1','Stage 2','Keep 8 bits','Alpha test'];
+---
+<gx-galaxy-pipeline class="gx-demo galaxy-wpar-demo not-prose">
+  <fieldset disabled>
+    <div class="pipe-steps" aria-label="Follow the eye alpha through the pipeline">
+      {steps.map((label,i)=><button type="button" data-step={i} aria-pressed={i===3}><span>{label}</span><strong data-value={i}>{['255','447','191','PASS'][i]}</strong></button>)}
+    </div>
+    <label class="pipe-toggle"><input type="checkbox" data-convert checked /> Convert the final result to 8 bits</label>
+  </fieldset>
+  <div class="pipe-focus">
+    <img data-eye src="/images/galaxy-eyes/eye-open.png" width="64" height="64" alt="The eye texture survives the final alpha test." />
+    <div><p class="pipe-expression" data-expression>128 ≤ 191 ≤ 255</p><p data-explain aria-live="polite">Both comparisons pass. The eye surface can write its color.</p></div>
+  </div>
+  <p class="pipe-note">Integer calculation for the captured opaque eye texture.</p>
+</gx-galaxy-pipeline>
+<script>
+  import { eyeWideAlpha, lowByte, eyePasses } from './galaxy-alpha';
+  class GalaxyPipeline extends HTMLElement {
+    connectedCallback(){
+      let step=3;const toggle=this.querySelector<HTMLInputElement>('[data-convert]')!;
+      const update=()=>{
+        const wide=eyeWideAlpha(255),value=toggle.checked?lowByte(wide):wide,pass=eyePasses(value);
+        const values=['255',String(wide),String(value),pass?'PASS':'FAIL'];
+        this.querySelectorAll<HTMLElement>('[data-value]').forEach(el=>el.textContent=values[Number(el.dataset.value)]);
+        this.querySelectorAll<HTMLButtonElement>('[data-step]').forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.step)===step)));
+        const copy=[['Previous alpha = 255','Stage 1 replaces the temporary lighting value with full alpha.'],['255 + 128 + 64 = 447','Stage 2 adds the half bias and a quarter of texture alpha. Its clamp is disabled.'],[toggle.checked?'447 & 255 = 191':'447 stays 447',toggle.checked?'Only the lowest 8 bits reach the alpha test.':'Without this conversion, the oversized value reaches the alpha test.'],[`128 ≤ ${value} ≤ 255`,pass?'Both comparisons pass. The eye surface can write its color.':'The upper comparison fails. The entire eye fragment is discarded.']];
+        this.querySelector('[data-expression]')!.textContent=copy[step][0];this.querySelector('[data-explain]')!.textContent=copy[step][1];
+        const im=this.querySelector<HTMLImageElement>('[data-eye]')!;im.style.opacity=step===3&&!pass?'0':'1';im.alt=step===3&&!pass?'The eye fragment has been discarded.':'The eye texture being processed.';
+        this.dataset.passes=String(pass);
+      };
+      this.querySelectorAll<HTMLButtonElement>('[data-step]').forEach(b=>b.onclick=()=>{step=Number(b.dataset.step);update();});toggle.onchange=update;this.querySelector('fieldset')!.disabled=false;update();
+    }
+  }
+  if(!customElements.get('gx-galaxy-pipeline'))customElements.define('gx-galaxy-pipeline',GalaxyPipeline);
+</script>
+<style>
+  .pipe-steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-bottom:1px solid var(--border);gap:.25rem;}
+  .pipe-steps button{border:0;border-bottom:3px solid transparent;border-radius:0;padding:1rem .35rem;}
+  .pipe-steps button[aria-pressed="true"]{border-bottom-color:var(--primary);background:var(--muted);}
+  .pipe-steps span{font-size:.75rem;display:block;}
+  .pipe-steps strong{font:600 1.7rem ui-monospace,monospace;display:block;margin-top:.4rem;}
+  [data-passes="false"] [data-value="3"]{color:var(--gx-red-text);}
+  [data-passes="true"] [data-value="3"]{color:var(--gx-blue-text);}
+  .pipe-toggle{margin-top:1rem;}
+  .pipe-focus{display:grid;grid-template-columns:80px minmax(0,1fr);gap:1.25rem;align-items:center;padding:1.5rem 0 1rem;}
+  .pipe-focus img{width:80px;height:80px;image-rendering:pixelated;margin:0;}
+  .pipe-focus [data-explain]{font-size:.9rem;}
+  .pipe-expression{font:600 clamp(.85rem,3vw,1.2rem) ui-monospace,monospace;}
+  .pipe-note{color:var(--muted-foreground);font-size:.8rem;text-align:center;margin:0;}
+  @media(max-width:400px){.pipe-steps strong{font-size:1.35rem;}.pipe-steps span{font-size:.67rem;}.pipe-focus{grid-template-columns:58px minmax(0,1fr);gap:.75rem;}.pipe-focus img{width:58px;height:58px;}}
+</style>

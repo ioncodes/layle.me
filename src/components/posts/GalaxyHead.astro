@@ -1,0 +1,53 @@
+---
+import '../../styles/galaxy-wpar-demos.css';
+---
+<gx-galaxy-head class="gx-demo galaxy-wpar-demo not-prose">
+  <fieldset disabled class="head-toolbar">
+    <div class="head-modes" aria-label="Eye rendering">
+      <button type="button" data-mode="old" aria-pressed="true">Old Gecko</button>
+      <button type="button" data-mode="fixed" aria-pressed="false">Fixed</button>
+    </div>
+    <button type="button" data-reset>Reset view</button>
+  </fieldset>
+  <div class="head-stage">
+    <img data-fallback src="/images/galaxy-eyes/old.webp" width="3243" height="1824" alt="Mario's save-selection head with the eye surfaces missing." loading="lazy" />
+    <canvas hidden tabindex="0" role="img" aria-label="Mario's captured head. Drag or use arrow keys to rotate."></canvas>
+  </div>
+  <fieldset disabled class="head-options">
+    <label><input type="checkbox" data-wire /> Show eye triangles</label>
+    <label><input type="checkbox" data-highlight /> Highlight eye surfaces</label>
+  </fieldset>
+  <fieldset disabled class="head-sliders">
+    <label>Turn <input type="range" min="-180" max="180" value="0" data-turn aria-label="Turn Mario's head" /></label>
+    <label>Zoom <input type="range" min="70" max="150" value="100" data-zoom aria-label="Zoom Mario's head" /></label>
+    <label>Lift eye surfaces <input type="range" min="0" max="100" value="0" data-lift aria-label="Lift eye surfaces away from the head for inspection" /></label>
+  </fieldset>
+  <p class="head-caption" data-caption>Captured game geometry with simplified lighting.</p>
+</gx-galaxy-head>
+<script>
+  import { mountGalaxyHead } from './galaxy-eye-model';
+  class GalaxyHead extends HTMLElement {
+    cleanup?:()=>void; observer?:IntersectionObserver; generation=0;
+    connectedCallback(){
+      const generation=++this.generation;
+      this.observer=new IntersectionObserver(entries=>{if(!entries.some(e=>e.isIntersecting))return;this.observer?.disconnect();
+        mountGalaxyHead(this).then(cleanup=>{if(!this.isConnected||generation!==this.generation)cleanup();else this.cleanup=cleanup;});
+      },{rootMargin:'250px'});this.observer.observe(this);
+    }
+    disconnectedCallback(){this.generation++;this.observer?.disconnect();this.cleanup?.();}
+  }
+  if(!customElements.get('gx-galaxy-head'))customElements.define('gx-galaxy-head',GalaxyHead);
+</script>
+<style>
+  .head-toolbar,.head-modes,.head-options{display:flex;flex-wrap:wrap;align-items:center;gap:.6rem;}
+  .head-toolbar{justify-content:space-between;margin-bottom:1rem!important;}
+  .head-modes [aria-pressed="true"]{background:var(--foreground);color:var(--background);}
+  .head-stage{position:relative;background:var(--muted);overflow:hidden;}
+  .head-stage img{width:100%;height:auto;margin:0;display:block;}
+  .head-stage canvas{display:block;width:100%;height:460px;cursor:grab;touch-action:pan-y;}
+  .head-stage [hidden]{display:none;}
+  .head-options{gap:.65rem 1.4rem;margin:1rem 0!important;}
+  .head-sliders{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem;}
+  .head-caption{font-size:.8rem;text-align:center;color:var(--muted-foreground);}
+  @media(max-width:520px){.head-stage canvas{height:370px;}.head-sliders{grid-template-columns:1fr 1fr;}.head-sliders label:last-child{grid-column:1/-1;}}
+</style>

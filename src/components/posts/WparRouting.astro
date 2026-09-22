@@ -1,0 +1,79 @@
+---
+import '../../styles/galaxy-wpar-demos.css';
+import * as Plot from '@observablehq/plot';
+import { parseHTML } from 'linkedom';
+
+const { document } = parseHTML('<html></html>');
+const description = 'The CPU writes through the gather pipe and PI. During drawing, PI writes to the graphics FIFO in RAM, which GX reads. During skinning, PI writes to vertex arrays in RAM instead.';
+
+function routingPlot(compact: boolean) {
+  const width = compact ? 340 : 820;
+  const height = compact ? 254 : 200;
+  // Each layout keeps labels readable instead of shrinking the desktop diagram.
+  const nodes = compact ? [
+    { x: 28, y: 32, w: 50, h: 42, label: 'CPU' },
+    { x: 147, y: 32, w: 128, h: 56, label: 'Write-gather', detail: '32-byte bursts' },
+    { x: 296, y: 32, w: 64, h: 42, label: 'PI' },
+    { x: 80, y: 152, w: 146, h: 56, label: 'Graphics FIFO', detail: 'RAM' },
+    { x: 254, y: 152, w: 158, h: 56, label: 'Vertex arrays', detail: 'RAM' },
+    { x: 80, y: 230, w: 70, h: 42, label: 'GX' },
+  ] : [
+    { x: 40, y: 100, w: 70, h: 42, label: 'CPU' },
+    { x: 210, y: 100, w: 156, h: 56, label: 'Write-gather', detail: '32-byte bursts' },
+    { x: 365, y: 100, w: 70, h: 42, label: 'PI' },
+    { x: 570, y: 48, w: 154, h: 56, label: 'Graphics FIFO', detail: 'RAM' },
+    { x: 570, y: 156, w: 154, h: 56, label: 'Vertex arrays', detail: 'RAM' },
+    { x: 770, y: 48, w: 70, h: 42, label: 'GX' },
+  ];
+  const arrows = compact
+    ? [[53, 32, 83, 32], [211, 32, 264, 32], [80, 98, 80, 124], [254, 98, 254, 124], [80, 180, 80, 209]]
+    : [[75, 100, 132, 100], [288, 100, 330, 100], [446, 48, 493, 48], [446, 156, 493, 156], [647, 48, 735, 48]];
+  const branches = compact
+    ? [[[296, 53], [296, 98], [80, 98]]]
+    : [[[400, 100], [446, 100]], [[446, 48], [446, 156]]];
+  const labels = compact
+    ? [{ x: 10, y: 113, text: 'Drawing' }, { x: 180, y: 113, text: 'Skinning' }]
+    : [{ x: 493, y: 10, text: 'Drawing' }, { x: 493, y: 118, text: 'Skinning' }];
+
+  return Plot.plot({
+    document, width, height, margin: 0,
+    x: { domain: [0, width], axis: null },
+    y: { domain: [0, height], reverse: true, axis: null },
+    style: { background: 'transparent', color: 'var(--foreground)', fontFamily: 'inherit', fontSize: '14px' },
+    marks: [
+      ...branches.map(points => Plot.line(points, { stroke: 'var(--gx-blue-text)', strokeWidth: 1.5 })),
+      Plot.arrow(arrows, {
+        x1: d => d[0], y1: d => d[1], x2: d => d[2], y2: d => d[3],
+        stroke: (_, i) => i === 3 ? 'var(--gx-gold-text)' : 'var(--gx-blue-text)', strokeWidth: 1.5, headLength: 6,
+      }),
+      Plot.rect(nodes, {
+        x1: d => d.x - d.w / 2, x2: d => d.x + d.w / 2,
+        y1: d => d.y - d.h / 2, y2: d => d.y + d.h / 2,
+        fill: 'none', stroke: d => d.label === 'Vertex arrays' ? 'var(--gx-gold-text)' : 'var(--gx-blue-text)', strokeWidth: 1.5, rx: 3,
+      }),
+      Plot.text(nodes, { x: 'x', y: d => d.y - (d.detail ? 8 : 0), text: 'label' }),
+      Plot.text(nodes.filter(d => d.detail), {
+        x: 'x', y: d => d.y + 13, text: 'detail', fontSize: 12, fill: 'var(--muted-foreground)',
+      }),
+      Plot.text(labels, {
+        x: 'x', y: 'y', text: 'text', textAnchor: 'start', fontSize: 12, fill: d => d.text === 'Skinning' ? 'var(--gx-gold-text)' : 'var(--gx-blue-text)',
+      }),
+    ],
+  }).outerHTML;
+}
+---
+
+<figure class="route-diagram galaxy-wpar-demo not-prose" role="img" aria-label={description}>
+  <div class="route-wide" aria-hidden="true" set:html={routingPlot(false)} />
+  <div class="route-compact" aria-hidden="true" set:html={routingPlot(true)} />
+</figure>
+
+<style>
+  .route-diagram { margin: 2rem 0; }
+  .route-diagram :global(svg) { display: block; width: 100%; height: auto; }
+  .route-compact { display: none; }
+  @media (max-width: 680px) {
+    .route-wide { display: none; }
+    .route-compact { display: block; max-width: 380px; margin: auto; }
+  }
+</style>

@@ -1,0 +1,77 @@
+---
+import '../../styles/galaxy-wpar-demos.css';
+import DemoSteps from './DemoSteps.astro';
+import { exampleFloats, floatBytes } from './wpar-model';
+const payload = floatBytes(exampleFloats);
+const initial = 1;
+---
+
+<gx-wpar-burst class="gx-demo galaxy-wpar-demo not-prose">
+  <DemoSteps labels={['Old tail', 'Write WPAR', 'Write 32 new bytes']} label="Follow the write-gather reset" />
+  <p class="burst-key"><span class="old">Old padding</span><span class="new">New float data</span><span class="vacant">Empty</span></p>
+  <div class="burst-comparisons">
+    {[false, true].map(fixed => <div class="burst-case" data-case={fixed ? 'fixed' : 'broken'}>
+      <h3>{fixed ? 'Reset implemented' : 'Reset missing'}</h3>
+      <div class="burst-grid" aria-hidden="true">{exampleFloats.map((_, word) => <div class="burst-word">{payload.slice(word * 4, word * 4 + 4).map((_, byte) => {
+        const pending = word * 4 + byte < initial;
+        return <span class={pending ? 'old' : 'vacant'} data-cell>{pending ? '00' : '·'}</span>;
+      })}</div>)}</div>
+      <p class="burst-value" data-value>1 old byte waiting.</p>
+    </div>)}
+  </div>
+  <fieldset class="gx-slider-controls" disabled>
+    <label>Old padding still pending: <output data-count>1 byte</output>
+      <input data-leftover type="range" min="0" max="31" value="1" aria-label="Old padding bytes left in the gather pipe" />
+    </label>
+  </fieldset>
+  <noscript><p>Without the reset, the first transferred burst contains the old padding followed by only 31 new bytes. With the reset, all 32 bytes belong to the new payload.</p></noscript>
+</gx-wpar-burst>
+
+<script>
+  import { exampleFloats, floatBytes, hex, decodeFloat, formatFloat } from './wpar-model';
+  class WparBurst extends HTMLElement {
+    connectedCallback() {
+      let stage = 0;
+      const slider = this.querySelector<HTMLInputElement>('[data-leftover]')!;
+      const payload = floatBytes(exampleFloats);
+      const draw = () => {
+        const n = Number(slider.value);
+        this.querySelector('[data-count]')!.textContent = `${n} byte${n === 1 ? '' : 's'}`;
+        this.querySelectorAll<HTMLElement>('[data-case]').forEach(panel => {
+          const fixed = panel.dataset.case === 'fixed';
+          const prefix = stage > 0 && fixed ? 0 : n;
+          const bytes = [...Array(prefix).fill(0), ...(stage === 2 ? payload : [])].slice(0, 32);
+          panel.querySelectorAll<HTMLElement>('[data-cell]').forEach((cell, i) => {
+            cell.className = i >= bytes.length ? 'vacant' : i < prefix ? 'old' : 'new';
+            cell.textContent = i >= bytes.length ? '·' : hex(bytes[i]);
+          });
+          panel.querySelector('[data-value]')!.textContent = stage < 2 ? `${prefix} old byte${prefix === 1 ? '' : 's'} ${prefix ? 'waiting' : 'remaining'}.` : `First float: ${formatFloat(decodeFloat(bytes))}. ${prefix} new byte${prefix === 1 ? '' : 's'} still pending.`;
+        });
+        this.querySelectorAll<HTMLButtonElement>('[data-stage]').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.stage) === stage)));
+      };
+      slider.oninput = draw;
+      this.querySelectorAll<HTMLButtonElement>('[data-stage]').forEach(b => b.onclick = () => {stage = Number(b.dataset.stage); draw();});
+      this.querySelectorAll('fieldset').forEach(fieldset => fieldset.disabled = false);
+      draw();
+    }
+  }
+  if (!customElements.get('gx-wpar-burst')) customElements.define('gx-wpar-burst', WparBurst);
+</script>
+
+<style>
+  gx-wpar-burst { padding-bottom: 0; margin-bottom: 1rem; }
+  gx-wpar-burst .gx-slider-controls { margin: .5rem 0 0; }
+  .gx-slider-controls input[type="range"] { margin: .5rem 0 0; }
+  .burst-key { display: flex; flex-wrap: wrap; gap: .75rem; font-size: .75rem; }
+  .burst-key > span { padding: .2rem .5rem; }
+  .burst-comparisons { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+  .burst-case h3 { margin: .7rem 0; font-size: 1rem; font-weight: 650; }
+  .burst-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px .75rem; }
+  .burst-word { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3px; }
+  .burst-word > span { display: grid; place-items: center; min-height: 2.2rem; font: .8rem ui-monospace, monospace; }
+  .old { background: var(--gx-cell-gold); color: var(--foreground); }
+  .new { background: var(--gx-cell-blue); color: var(--foreground); }
+  .vacant { background: var(--muted); color: var(--muted-foreground); }
+  .burst-value { font-size: .8rem; font-variant-numeric: tabular-nums; margin: .5rem 0 0; }
+  @media (max-width: 600px) { .burst-comparisons { grid-template-columns: 1fr; gap: .25rem; } }
+</style>

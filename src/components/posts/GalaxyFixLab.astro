@@ -1,0 +1,70 @@
+---
+import '../../styles/galaxy-wpar-demos.css';
+---
+<gx-galaxy-fix class="gx-demo galaxy-wpar-demo not-prose">
+  <fieldset disabled class="fix-options" aria-label="8-bit conversions">
+    <label><input data-input-wrap type="checkbox" checked /> Wrap stage inputs A/B/C</label>
+    <label><input data-output-wrap type="checkbox" checked /> Wrap final RGB and alpha</label>
+  </fieldset>
+  <div class="fix-scenes">
+    <figure>
+      <figcaption>Galaxy · alpha test</figcaption>
+      <img data-eye src="/images/galaxy-eyes/head-fixed.webp" width="1080" height="850" alt="Mario's eyes restored with both conversions enabled." loading="lazy" />
+      <div class="fix-reading"><span>Final alpha<strong data-eye-alpha>191</strong></span><span data-eye-verdict>Eyes visible</span></div>
+    </figure>
+    <figure>
+      <figcaption>Sunshine · blending</figcaption>
+      <img data-water src="/images/galaxy-eyes/water-fixed.webp" width="950" height="300" alt="The ocean's wave pattern restored with both conversions enabled." loading="lazy" />
+      <div class="fix-reading"><span>Example alpha<strong data-water-alpha>86</strong></span><span data-water-verdict>Wave brightness restored</span></div>
+    </figure>
+  </div>
+  <p class="fix-caption" data-result aria-live="polite">Both conversions enabled. Both materials receive the intended alpha.</p>
+</gx-galaxy-fix>
+<script>
+  class GalaxyFixLab extends HTMLElement {
+    generation=0;
+    connectedCallback(){
+      const inputs=this.querySelector<HTMLInputElement>('[data-input-wrap]')!;
+      const output=this.querySelector<HTMLInputElement>('[data-output-wrap]')!;
+      const update=async()=>{
+        const generation=++this.generation;
+        const i=inputs.checked,o=output.checked;
+        const variant=i?(o?'fixed':'int-inputs'):(o?'int-final-output':'math-only');
+        const ea=o?191:447,wa=i?86:(o?88:600);
+        const eyeText=o?'Eyes visible':'Eyes rejected';
+        const waterText=i?'Wave brightness restored':o?'Visible, but slightly too bright':'Water saturated to white';
+        const result=i?(o?'Both conversions enabled. Both materials receive the intended alpha.':'Input wrapping fixes the ocean. The eyes still need final output wrapping.'):
+          o?'Output wrapping restores the eyes. The ocean looks close, but its example alpha is 88 instead of 86.':'Integer arithmetic alone fixes neither material.';
+        const images=['head','water'].map(prefix=>{const image=new Image();image.src=`/images/galaxy-eyes/${prefix}-${variant}.webp`;return image;});
+        try{await Promise.all(images.map(image=>image.decode()));}
+        catch{if(generation===this.generation)this.querySelector('[data-result]')!.textContent='The selected captures could not load. The previous comparison is still shown.';return;}
+        if(!this.isConnected||generation!==this.generation)return;
+        const eye=this.querySelector<HTMLImageElement>('[data-eye]')!,water=this.querySelector<HTMLImageElement>('[data-water]')!;
+        eye.src=images[0].src;water.src=images[1].src;eye.alt=`${eyeText}. Alpha ${ea}.`;water.alt=`${waterText}. Example alpha ${wa}.`;
+        this.querySelector('[data-eye-alpha]')!.textContent=String(ea);
+        this.querySelector('[data-water-alpha]')!.textContent=String(wa);
+        this.querySelector('[data-eye-verdict]')!.textContent=eyeText;
+        this.querySelector('[data-water-verdict]')!.textContent=waterText;
+        this.querySelector('[data-result]')!.textContent=result;
+        this.dataset.variant=variant;
+      };
+      inputs.onchange=update;output.onchange=update;
+      this.querySelector('fieldset')!.disabled=false;
+    }
+    disconnectedCallback(){this.generation++;}
+  }
+  if(!customElements.get('gx-galaxy-fix'))customElements.define('gx-galaxy-fix',GalaxyFixLab);
+</script>
+<style>
+  .fix-options{display:flex;flex-wrap:wrap;gap:.75rem 2rem;margin-bottom:1.25rem!important;}
+  .fix-scenes{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.65fr);gap:1.5rem;}
+  figure{min-width:0;margin:0;}
+  figcaption{font-size:.9rem;margin-bottom:.6rem;}
+  img{display:block;width:100%;height:210px;object-fit:cover;margin:0;}
+  .fix-reading{display:flex;justify-content:space-between;align-items:center;gap:.75rem;margin-top:.75rem;}
+  .fix-reading span:first-child{font-size:.75rem;color:var(--muted-foreground);}
+  strong{display:block;font-size:1.8rem;line-height:1.2;font-weight:600;font-variant-numeric:tabular-nums;color:var(--foreground);}
+  .fix-reading span:last-child{font-size:.85rem;text-align:right;}
+  .fix-caption{text-align:center;font-size:.8rem;color:var(--muted-foreground);margin-top:1.25rem;}
+  @media(max-width:520px){.fix-scenes{grid-template-columns:1fr;gap:1.25rem;}img{height:auto;max-height:230px;object-fit:contain;background:#073952;}figure:first-child img{object-fit:cover;object-position:center 46%;}.fix-reading{margin-top:.5rem;}}
+</style>

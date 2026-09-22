@@ -8,7 +8,7 @@ const freeze = kind === 'z-freeze';
 const panels = freeze ? ['z-freeze off', 'z-freeze on'] : ['Direct', 'Index8', 'Index16'];
 ---
 
-<div class="test-panels not-prose" role="img" aria-label={freeze ? 'Expected test result: with z-freeze off, solid blue on the left; with z-freeze on, blue with a red center on the right.' : 'Expected test result: three identical solid blue rectangles for direct vertices, Index8 with a skip, and Index16 with a skip.'}>
+<div class="test-panels not-prose" role="img" aria-label={freeze ? 'Expected test result: with z-freeze off, solid blue on the left; with z-freeze on, blue with a red center on the right.' : 'Expected test result: 3 identical solid blue rectangles for direct vertices, Index8 with a skip, and Index16 with a skip.'}>
   {panels.map((label, index) => (
     <div aria-hidden="true">
       <Fragment set:html={(freeze ? freezeResult({ frozen: index === 1, document }) : vertexPanel({ document })).outerHTML} />

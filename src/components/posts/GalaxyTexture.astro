@@ -1,0 +1,65 @@
+---
+import '../../styles/galaxy-wpar-demos.css';
+---
+<gx-galaxy-texture class="gx-demo galaxy-wpar-demo not-prose">
+  <div class="texture-layout">
+    <div class="texture-image">
+      <img data-texture src="/images/galaxy-eyes/eye-open.png" alt="The game's 64 by 64 open-eye texture, enlarged to show its texels." width="64" height="64" loading="lazy" />
+      <span data-crosshair aria-hidden="true"></span>
+    </div>
+    <div>
+      <fieldset disabled class="texture-controls">
+        <label>Texture frame
+          <select data-frame aria-label="Eye texture frame"><option value="open">Open</option><option value="half">Half closed</option><option value="closed">Closed</option></select>
+        </label>
+        <label>Texel column <input data-x type="range" min="0" max="63" value="28" aria-label="Texel column" /></label>
+        <label>Texel row <input data-y type="range" min="0" max="63" value="29" aria-label="Texel row" /></label>
+      </fieldset>
+      <p class="texture-readout" data-readout aria-live="polite">Select a texel to inspect its color.</p>
+      <p class="texture-opacity">All 4'096 texels are fully opaque (alpha 255).</p>
+    </div>
+  </div>
+  <p class="texture-caption">Switch frames to inspect the blink animation.</p>
+</gx-galaxy-texture>
+<script>
+  class GalaxyTexture extends HTMLElement {
+    generation=0;
+    connectedCallback(){
+      const display=this.querySelector<HTMLImageElement>('[data-texture]')!,x=this.querySelector<HTMLInputElement>('[data-x]')!,y=this.querySelector<HTMLInputElement>('[data-y]')!,select=this.querySelector<HTMLSelectElement>('select')!;
+      const source=document.createElement('canvas');source.width=64;source.height=64;const ctx=source.getContext('2d',{willReadFrequently:true});if(!ctx)return;
+      let pixels:ImageData|undefined,ready=false;
+      const update=()=>{
+        if(!pixels)return;
+        display.src=`/images/galaxy-eyes/eye-${select.value}.png`;
+        display.alt=`The game's ${select.options[select.selectedIndex].text.toLowerCase()} eye texture.`;
+        const px=Number(x.value),py=Number(y.value),i=(py*64+px)*4;
+        this.querySelector('[data-readout]')!.textContent=`Texel (${px}, ${py}) · RGB ${pixels.data[i]}, ${pixels.data[i+1]}, ${pixels.data[i+2]}`;
+        const cross=this.querySelector<HTMLElement>('[data-crosshair]')!;cross.style.left=`${(px+.5)/64*100}%`;cross.style.top=`${(py+.5)/64*100}%`;
+      };
+      const load=async()=>{
+        const generation=++this.generation;ready=false;this.querySelector('fieldset')!.disabled=true;
+        const im=new Image();im.src=`/images/galaxy-eyes/eye-${select.value}.png`;
+        try{await im.decode();}catch{this.querySelector('[data-readout]')!.textContent='The texture could not load. The captured open-eye texture is fully opaque.';return;}
+        if(!this.isConnected||generation!==this.generation)return;
+        ctx.clearRect(0,0,64,64);ctx.drawImage(im,0,0);pixels=ctx.getImageData(0,0,64,64);
+        ready=true;this.querySelector('fieldset')!.disabled=false;update();
+      };
+      x.oninput=y.oninput=update;select.onchange=load;
+      display.onclick=e=>{if(!ready)return;const rect=display.getBoundingClientRect();x.value=String(Math.max(0,Math.min(63,Math.floor((e.clientX-rect.left)/rect.width*64))));y.value=String(Math.max(0,Math.min(63,Math.floor((e.clientY-rect.top)/rect.height*64))));update();};
+      load();
+    }
+    disconnectedCallback(){this.generation++;}
+  }
+  if(!customElements.get('gx-galaxy-texture'))customElements.define('gx-galaxy-texture',GalaxyTexture);
+</script>
+<style>
+  .texture-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:2rem;align-items:center;}
+  .texture-image{position:relative;max-width:280px;width:100%;margin:auto;border:1px solid var(--border);}
+  .texture-image img{display:block;width:100%;height:auto;margin:0;image-rendering:pixelated;cursor:crosshair;}
+  [data-crosshair]{position:absolute;left:44.5%;top:46%;width:9px;height:9px;border:1px solid black;outline:1px solid white;transform:translate(-50%,-50%);pointer-events:none;}
+  .texture-controls label{margin-top:.75rem;}
+  .texture-readout{font:.8rem/1.7 ui-monospace,monospace;min-height:3.5em;}
+  .texture-opacity{font-size:.85rem;}
+  .texture-caption{font-size:.8rem;text-align:center;color:var(--muted-foreground);}
+  @media(max-width:520px){.texture-layout{grid-template-columns:1fr;gap:1rem;}.texture-image{max-width:220px;}.texture-controls{display:grid;grid-template-columns:1fr 1fr;gap:.5rem 1rem;}.texture-controls label:has(select){grid-column:1/-1;}}
+</style>

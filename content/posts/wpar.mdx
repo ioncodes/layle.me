@@ -1,0 +1,197 @@
+---
+author: "Layle"
+title: "WPAR: Why Metroid Prime's Geometry Exploded"
+summary: "How a missing write-gather reset corrupted Metroid Prime's model coordinates in Lazuli."
+image:
+  alt: "Metroid Prime's space station with large, bright triangles covering parts of the sky."
+  src: "/images/gecko/wpar-before.webp"
+  position: "50% 35%"
+tags: ["emulation", "gamecube", "graphics", "gecko"]
+date: 2026-09-21T08:00:00Z
+sticky: true
+unlisted: true
+---
+
+
+import ImageComparison from '../../src/components/posts/ImageComparison.astro';
+import Math from '../../src/components/Math.astro';
+import WparRouting from '../../src/components/posts/WparRouting.astro';
+import WparBurst from '../../src/components/posts/WparBurst.astro';
+import WparPadding from '../../src/components/posts/WparPadding.astro';
+import WparFloat from '../../src/components/posts/WparFloat.astro';
+
+While helping my friend [vxpm](https://github.com/vxpm) debug *Metroid Prime* in [Lazuli](https://github.com/vxpm/lazuli), his GameCube emulator, I traced the exploding geometry to **WPAR**, the CPU's Write Pipe Address Register.
+
+Writing that register has a side effect that's easy to miss: it discards any bytes still waiting in the write-gather pipe. Without the reset, leftover bytes can shift the next array and turn small coordinates into enormous triangles.
+
+The Metroid Prime comparisons below reproduce that behavior by deliberately disabling the WPAR reset in [Gecko](https://github.com/ioncodes/gecko):
+
+<ImageComparison
+  before="/images/gecko/wpar-before.webp"
+  after="/images/gecko/wpar-after.webp"
+  beforeAlt="Metroid Prime reproduction in Gecko with the WPAR reset disabled: bright triangles cover the sky above the station."
+  afterAlt="The same station flyby with the WPAR reset implemented: the sky and station are unobscured."
+  width={1195}
+  height={896}
+  caption="Disabling the WPAR reset in Gecko reproduces the triangles above the station."
+/>
+
+In this reproduction, a vertex's Y coordinate went from roughly `0.18` to minus 3.2 quadrillion. That'll stretch a triangle quite a bit :^)
+
+## A bit of gathering
+
+The GameCube's CPU, **Gekko**, has a [write-gather pipe](https://doc.kodewerx.org/documents/gekko_user_manual.pdf#page=314) that combines small stores into **32-byte bursts**. A byte-sized command and a 4-byte value can join the same stream, which waits until a complete burst is ready to transfer.
+
+Games normally write to the port at `0xCC008000`, whose physical address, `0x0C008000`, is selected by WPAR. Repeated stores append bytes to the pipe even though the CPU keeps writing to the same address.
+
+The **processor interface**, or PI, then writes each burst into RAM at its FIFO write pointer and advances that pointer. Normally the graphics processor, **GX**, reads commands from this FIFO: a queue that preserves their order.
+
+There are 2 addresses involved here: the **port the CPU writes to** and the **destination in RAM selected by PI**. Software can redirect the destination to another buffer and disconnect GX's FIFO so it won't consume those bytes as graphics commands. PI continues writing the bursts to RAM.
+
+*Metroid Prime* uses this to build arrays of positions and normals, the surface directions used for lighting:
+
+<WparRouting />
+
+## Writing the same address again
+
+The [WPAR description](https://doc.kodewerx.org/documents/gekko_user_manual.pdf#page=314) includes the reset rule:
+
+> A mtspr to WPAR invalidates the data in the buffer and sets the gather address.
+
+`mtspr` is the PowerPC instruction for writing a special-purpose register. Writing WPAR discards pending bytes **even if the address doesn't change**, while bytes already transferred to RAM stay there.
+
+<aside aria-labelledby="wpar-cpu-fun-fact" className="my-8 border border-border bg-muted/40 px-5 py-4 [&>p]:my-0">
+  <strong id="wpar-cpu-fun-fact" className="mb-2 block text-base">Fun fact</strong>
+
+I've been asked how writing an internal CPU register can affect hardware outside the CPU. The write-gather buffer is inside the CPU too!
+
+</aside>
+
+Suppose 1 padding byte remains in the pipe when software rewrites WPAR and redirects PI to a new buffer. The next 32 bytes should form a burst of their own, but without the reset, the old byte takes the first slot. Only 31 new bytes fit and the last byte stays behind.
+
+The example below uses 8 floats as its new payload. Step through the writes, then change how much padding was left over:
+
+<WparBurst />
+
+With 0 pending bytes, there's nothing to discard and both versions work. With 4, the floats still start on 4-byte boundaries but occupy the wrong array entries. Other amounts can split individual floats across the boundaries where GX expects to read them.
+
+## Skinning through the pipe
+
+Animated models start with vertices in a reference pose. **Skinning** transforms those vertices according to the current pose of the model's bones and updates their normals to match.
+
+The [Prime decompilation's `CSkinnedModel::Calculate`](https://github.com/PrimeDecomp/prime/blob/02af30843a5c147f891ae97ed52a639ef6991bc5/src/Kyoto/Animation/DolphinCSkinnedModel.cpp#L177) shows how the game writes those results. With allocation, cache management and optional morphing omitted, the sequence looks like this:
+
+```cpp
+pipe = GXRedirectWriteGatherPipe(verts);
+
+BuildAccumulatedTransforms(pose, layout);
+BuildPoints(pipe);
+// Pad the position region to a multiple of 32 bytes.
+BuildNormals(pipe);
+
+GXRestoreWriteGatherPipe();
+```
+
+The CPU calculates the transformed vertices and writes the results through the pipe. There's a nice detail in [`CVirtualBone::BuildPoints`](https://github.com/PrimeDecomp/prime/blob/02af30843a5c147f891ae97ed52a639ef6991bc5/src/Kyoto/Animation/DolphinCVirtualBone.cpp#L201): its small-count path writes X, Y and Z through the **same pointer**, without incrementing it. Each store appends another coordinate because that pointer refers to the write-gather port.
+
+The [SDK's redirect routine](https://github.com/PrimeDecomp/prime/blob/02af30843a5c147f891ae97ed52a639ef6991bc5/extern/sdk/dolphin/gx/GXFifo.c#L326) finishes the previous graphics writes, waits for outstanding transfers and rewrites WPAR. It then disconnects the FIFOs, saves the old PI write pointer and points PI at the workspace supplied by the game.
+
+WPAR still contains `0x0C008000`, but writing it empties the pipe before PI's destination changes.
+
+The game writes positions first, pads that region to a multiple of 32 bytes and writes the normals after it. Later, GX reads these arrays using base addresses and a **stride**, the number of bytes between entries. If old padding lands at the start of the workspace, the new data won't line up with those addresses.
+
+## Why add 31 zeros?
+
+[`GXRestoreWriteGatherPipe`](https://github.com/PrimeDecomp/prime/blob/02af30843a5c147f891ae97ed52a639ef6991bc5/extern/sdk/dolphin/gx/GXFifo.c#L352) writes **31 zero bytes** before restoring the graphics FIFO.
+
+A partial burst can hold between 1 and 31 useful bytes. Adding 31 zeros guarantees that all the useful bytes leave in a complete burst, though some padding may remain in the pipe. WPAR is then rewritten to discard that remainder before the destination changes again.
+
+For example, 12 useful bytes need 20 zeros to complete a burst. The other 11 zeros stay in the pipe until the WPAR write discards them:
+
+<WparPadding />
+
+Try 1 useful byte: all 31 zeros fit in the burst and there's nothing left to discard. Try 0: the useful data already ended on a burst boundary, so all 31 zeros remain pending and get discarded.
+
+The order matters because **padding transfers the useful tail and resetting discards the unused remainder**. Resetting first would lose data, whereas keeping the padding would shift the next buffer's contents.
+
+## Back to Metroid Prime
+
+Reproducing this in Gecko, the affected skinning pass had **23 zero bytes** pending when the game redirected the pipe. Without the WPAR reset, those bytes became the start of the new workspace:
+
+| Reset | Byte offset | Bytes |
+| --- | --- | --- |
+| Implemented | 0 | <code className="whitespace-nowrap before:content-none after:content-none">3E A0 F9 08</code> <code className="whitespace-nowrap before:content-none after:content-none">3E 39 E0 1A</code> ... |
+| Missing | 0-22 | <code className="whitespace-nowrap before:content-none after:content-none">00 ... 00</code> (23 zeros) |
+| Missing | 23 | <code className="whitespace-nowrap before:content-none after:content-none">3E A0 F9 08</code> <code className="whitespace-nowrap before:content-none after:content-none">3E 39 E0 1A</code> ... |
+
+All **4'224 bytes** of the corrected workspace match the broken workspace when shifted by 23 bytes. The calculations produced the same data, but Gecko stored it in the wrong places.
+
+GX still reads from the original array base with a stride of 12 bytes: 3 4-byte floats per position. At array index 12, that gives these coordinates, rounded for readability:
+
+| Axis | Reset implemented | Reset missing |
+| --- | ---: | ---: |
+| X | <Math tex="0.106061" /> | <Math tex="0.00956970" /> |
+| Y | <Math tex="0.183704" /> | <span className="whitespace-nowrap"><Math tex={String.raw`-3.21470 \times 10^{15}`} /></span> |
+| Z | <Math tex="0" /> | <span className="whitespace-nowrap"><Math tex={String.raw`8.68805 \times 10^{-44}`} /></span> |
+
+The broken Y coordinate comes from the bytes `D9 36 BC 00`. A 32-bit float uses 1 bit for its sign, 8 for its exponent and 23 for its fraction. For a normal finite value, those fields give:
+
+<Math block tex={String.raw`\displaystyle (-1)^s \left(1 + \frac{f}{2^{23}}\right) 2^{e-127}`} />
+
+Here, <Math tex="s" /> is the sign bit and <Math tex="e" /> and <Math tex="f" /> are the unsigned integers stored in the exponent and fraction fields. The exponent is stored with a bias of 127, which we subtract to get the power of 2.
+
+For `D9 36 BC 00`, the sign is negative and the stored exponent is 178, giving <Math tex={String.raw`2^{178-127} = 2^{51}`} />. Multiplying by that is what makes the coordinate so enormous. The inspector below shows the calculation using the captured bytes from the Gecko reproduction:
+
+<WparFloat
+  bytes={[0x3c, 0x1c, 0xca, 0x3d, 0xd9, 0x36, 0xbc, 0x00, 0x00, 0x00, 0x00, 0x3e]}
+  address="0x804c0050"
+  badOffset={4}
+  alignedOffset={3}
+/>
+
+Move the window 1 byte left. `3D D9 36 BC` decodes to `0.10606143` because the sign and exponent now come from different bits.
+
+That exposes a float from the intended stream, but **it isn't the corrected Y coordinate**. The whole stream moved by 23 bytes, so this nearby aligned value belongs to an earlier part of it. Y at the correct array offset is `0.18370357`, as shown in the table.
+
+The huge coordinate is already present before projection. Connecting that displaced vertex to the others stretches its triangles far beyond the model, producing the large shapes over the station. The same shift also corrupts the normal array used for lighting.
+
+## Implementing the fix
+
+Gecko's [fix](https://github.com/ioncodes/gecko/commit/9b6d7dc333b509df76b3550d7a1bf38606ac06cd) adds explicit WPAR handling in both the interpreter and the runtime function used by the CPU JIT:
+
+```rust
+921 => {
+    sys.gekko.spr.wpar = val & !1;
+    sys.cp.gather_pos = 0;
+}
+```
+
+`921` is WPAR's register number and `gather_pos` is the number of queued bytes. Setting it to 0 makes the pipe empty; the next stores overwrite the old bytes, so there's no need to zero the buffer itself.
+
+`val & !1` clears the lowest bit of the supplied value. That bit is **BNE**, the read-only buffer status bit, so software can't set it by writing WPAR. The mask handles the register value, whereas `gather_pos = 0` performs the reset.
+
+The same commit also fixes the RAM writes during redirection. Previously, Gecko only wrote bursts to RAM when the CPU and GPU FIFOs were linked, but PI must keep writing while they're disconnected. Only the notification to GX depends on the link:
+
+```text
+write the complete burst to RAM
+advance the PI write pointer
+
+if the GPU FIFO is linked:
+    update its write pointer and available byte count
+
+retain only the incomplete tail for the next burst
+```
+
+Switching off only the WPAR reset produces the glitching on the left:
+
+<figure className="not-prose my-8">
+  <video className="block h-auto w-full" controls loop playsInline preload="metadata" poster="/images/gecko/wpar-video-poster.webp" width="1600" height="640" aria-label="Metroid Prime reproduction in Gecko: WPAR reset disabled on the left and enabled on the right.">
+    <source src="/videos/gecko/metroid-prime-wpar.mp4" type="video/mp4" />
+    <a href="/videos/gecko/metroid-prime-wpar.mp4">Download the comparison video.</a>
+  </video>
+  <figcaption className="mt-2 text-center text-sm text-muted-foreground">Watch the oversized triangles sweep across the view on the left.</figcaption>
+</figure>
+
+The [vertex-skip bug](/posts/vertex-skip/) added an unwanted corner and [z-freeze](/posts/z-freeze/) changed which surface won the depth test. This time, the coordinates were already wrong before GX got to them.
+
+Turns out throwing data away was the missing feature :^)

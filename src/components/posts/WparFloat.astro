@@ -1,0 +1,111 @@
+---
+import '../../styles/galaxy-wpar-demos.css';
+import Math from '../Math.astro';
+import { decodeFloat, formatFloat, hex } from './wpar-model';
+interface Props {
+  bytes: number[];
+  address: string;
+  badOffset: number;
+  alignedOffset: number;
+}
+const { bytes, address, badOffset, alignedOffset } = Astro.props;
+const initial = decodeFloat(bytes.slice(badOffset));
+const bits = bytes.slice(badOffset, badOffset + 4).map(b => b.toString(2).padStart(8, '0')).join('');
+const grouped = (value: number) => value.toLocaleString('en-US').replaceAll(',', "'");
+const calculations = bytes.slice(0, -3).map((_, offset) => {
+  const word = bytes.slice(offset, offset + 4);
+  const bits = word.map(b => b.toString(2).padStart(8, '0')).join('');
+  const exponent = parseInt(bits.slice(1, 9), 2), fraction = parseInt(bits.slice(9), 2);
+  if (exponent === 255) return String.raw`\text{${fraction ? 'NaN' : bits[0] === '1' ? 'Negative infinity' : 'Positive infinity'}}`;
+  const significand = String.raw`\frac{\text{${grouped(fraction)}}}{2^{23}}`;
+  const value = formatFloat(decodeFloat(word)).replace('−', '-').replace(/e([+-]?\d+)/, (_, n) => String.raw`\times 10^{${Number(n)}}`);
+  return String.raw`\begin{aligned}
+    &${bits[0] === '1' ? '-' : ''}${exponent === 0 ? significand : String.raw`\left(1 + ${significand}\right)`} 2^{${exponent === 0 ? -126 : exponent - 127}} \\
+    &\approx ${value}
+  \end{aligned}`;
+});
+---
+
+<gx-wpar-float class="gx-demo galaxy-wpar-demo not-prose" data-bytes={JSON.stringify(bytes)} data-address={address} data-bad={badOffset} data-aligned={alignedOffset}>
+  <p class="float-source">Bytes at <code>{address}</code></p>
+
+  <div class="float-bytes" aria-hidden="true">{bytes.map((b, i) => <span data-byte class:list={{ selected: i >= badOffset && i < badOffset + 4 }}><small>+{i.toString(16).toUpperCase()}</small>{hex(b)}</span>)}</div>
+  <div class="float-decoded"><code data-word>{bytes.slice(badOffset, badOffset + 4).map(hex).join(' ')}</code><span aria-hidden="true">→</span><strong data-value>{formatFloat(initial)}</strong></div>
+  <div class="float-bits" aria-hidden="true">{bits.split('').map((bit, i) => <span class={i === 0 ? 'sign' : i < 9 ? 'exponent' : 'fraction'} data-bit>{bit}</span>)}</div>
+  <div class="float-fields">
+    <div class="sign"><small>Sign · 1 bit</small><strong data-sign>{bits[0] === '1' ? 'Negative' : 'Positive'}</strong></div>
+    <div class="exponent"><small>Exponent · 8 bits</small><strong data-exponent>{parseInt(bits.slice(1, 9), 2)}</strong></div>
+    <div class="fraction"><small>Fraction · 23 bits</small><strong data-fraction>{grouped(parseInt(bits.slice(9), 2))}</strong></div>
+  </div>
+  <div data-formula>{calculations.map((tex, offset) => <div data-calculation={offset} hidden={offset !== badOffset}><Math block tex={tex} /></div>)}</div>
+  <fieldset class="gx-slider-controls" disabled>
+    <label>Read 4 bytes at offset <output data-offset>{badOffset}</output>
+      <input data-window type="range" min="0" max={bytes.length-4} value={badOffset} aria-label="Start of the 4-byte float window" />
+    </label>
+    <div class="float-presets"><button data-preset={badOffset} aria-pressed="true">GX’s 4-byte word</button><button data-preset={alignedOffset} aria-pressed="false">Aligned float bytes</button></div>
+  </fieldset>
+  <p class="sr-only" data-status aria-live="polite">4 bytes starting at offset {badOffset} decode to {formatFloat(initial)}.</p>
+  <noscript><p>The selected bytes are the original read boundary. Compare them with the aligned sequence described in the article.</p></noscript>
+</gx-wpar-float>
+
+<script>
+  import { decodeFloat, formatFloat, hex } from './wpar-model';
+  class WparFloat extends HTMLElement {
+    connectedCallback() {
+      const bytes = JSON.parse(this.dataset.bytes!) as number[];
+      const slider = this.querySelector<HTMLInputElement>('[data-window]')!;
+      const draw = () => {
+        const offset = Number(slider.value), word = bytes.slice(offset, offset + 4);
+        const value = decodeFloat(word), bits = word.map(b => b.toString(2).padStart(8, '0')).join('');
+        const sign = Number(bits[0]), exponent = parseInt(bits.slice(1, 9), 2), fraction = parseInt(bits.slice(9), 2);
+        this.querySelector('[data-offset]')!.textContent = String(offset);
+        this.querySelector('[data-word]')!.textContent = word.map(hex).join(' ');
+        this.querySelector('[data-value]')!.textContent = formatFloat(value);
+        this.querySelectorAll<HTMLElement>('[data-byte]').forEach((b, i) => b.classList.toggle('selected', i >= offset && i < offset + 4));
+        this.querySelectorAll<HTMLElement>('[data-bit]').forEach((b, i) => b.textContent = bits[i]);
+        this.querySelector('[data-sign]')!.textContent = sign ? 'Negative' : 'Positive';
+        this.querySelector('[data-exponent]')!.textContent = exponent === 255 ? '255 · special value' : exponent === 0 ? '0 · zero / subnormal' : String(exponent);
+        this.querySelector('[data-fraction]')!.textContent = fraction.toLocaleString('en-US').replaceAll(',', "'");
+        this.querySelectorAll<HTMLElement>('[data-calculation]').forEach(el => el.hidden = Number(el.dataset.calculation) !== offset);
+        this.querySelector('[data-status]')!.textContent = `Offset ${offset}: ${word.map(hex).join(' ')} becomes ${formatFloat(value)}. ${offset === Number(this.dataset.bad) ? 'This is the word GX read in the broken run.' : offset === Number(this.dataset.aligned) ? 'This window follows the alignment of the intended float stream.' : 'This is another byte boundary, shown for comparison.'}`;
+        this.querySelectorAll<HTMLButtonElement>('[data-preset]').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.preset) === offset)));
+      };
+      slider.oninput = draw;
+      this.querySelectorAll<HTMLButtonElement>('[data-preset]').forEach(b => b.onclick = () => {slider.value = b.dataset.preset!; draw();});
+      this.querySelector('fieldset')!.disabled = false;
+      draw();
+    }
+  }
+  if (!customElements.get('gx-wpar-float')) customElements.define('gx-wpar-float', WparFloat);
+</script>
+
+<style>
+  .float-source { color: var(--muted-foreground); font-size: .8rem; }
+  .float-presets { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
+  [aria-pressed="true"] { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 14%, var(--background)); }
+  .float-bytes { display: flex; gap: 3px; margin: 1rem 0; }
+  .float-bytes > span { flex: 1; min-width: 0; text-align: center; padding: .45rem 0; background: var(--muted); font: .95rem ui-monospace, monospace; border-bottom: 3px solid transparent; }
+  .float-bytes small { display: block; font-size: .6rem; color: var(--muted-foreground); margin-bottom: .4rem; }
+  .float-bytes .selected { background: var(--gx-cell-blue); color: var(--foreground); border-color: var(--gx-blue-text); }
+  .float-bytes .selected small { color: var(--foreground); }
+  .float-decoded { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: .6rem 1.25rem; margin: 1.75rem 0; }
+  .float-decoded code { font-size: 1rem; }
+  .float-decoded strong { font-size: 1.5rem; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  .float-bits { display: grid; grid-template-columns: repeat(32, minmax(0, 1fr)); gap: 2px; }
+  .float-bits > span { text-align: center; padding: .65rem 0; font: .8rem ui-monospace, monospace; }
+  .sign { background: var(--gx-cell-red); color: var(--foreground); }
+  .exponent { background: var(--gx-cell-gold); color: var(--foreground); }
+  .fraction { background: var(--gx-cell-blue); color: var(--foreground); }
+  .float-fields { display: grid; grid-template-columns: 1fr 1.4fr 1.7fr; gap: .4rem; margin-top: .4rem; }
+  .float-fields > div { padding: .65rem; min-width: 0; }
+  .float-fields small, .float-fields strong { display: block; font-size: .75rem; overflow-wrap: anywhere; }
+  .float-fields strong { margin-top: .4rem; font-weight: 550; }
+  @media (max-width: 480px) {
+    .float-bytes > span { font-size: .7rem; }
+    .float-bits { gap: 1px; }
+    .float-bits > span { font-size: .6rem; }
+    .float-fields { grid-template-columns: 1fr; }
+    .float-fields > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .5rem; }
+    .float-fields strong { margin: 0; }
+  }
+</style>

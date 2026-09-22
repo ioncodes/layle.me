@@ -1,0 +1,27 @@
+@import './gx-demos.css';
+
+.galaxy-wpar-demo {
+  --gx-blue: #648ac0;
+  --gx-red: #cb7781;
+  --gx-gold: #c6a05d;
+  --gx-green: #55966d;
+  --gx-blue-text: #315b98;
+  --gx-red-text: #a74653;
+  --gx-gold-text: #805c1f;
+  --gx-cell-blue: color-mix(in srgb, var(--gx-blue) 45%, var(--background));
+  --gx-cell-red: color-mix(in srgb, var(--gx-red) 45%, var(--background));
+  --gx-cell-gold: color-mix(in srgb, var(--gx-gold) 45%, var(--background));
+  --gx-cell-green: color-mix(in srgb, var(--gx-green) 45%, var(--background));
+}
+
+.dark .galaxy-wpar-demo {
+  --gx-gold: #c6a05d;
+  --gx-blue-text: #9cbce6;
+  --gx-red-text: #e7a0a9;
+  --gx-gold-text: #dabb7e;
+}
+
+.galaxy-wpar-demo .gx-slider-controls {
+  margin-top: 1.25rem;
+  margin-bottom: 1rem;
+}

@@ -26,8 +26,8 @@ Look at the portraits just below "MAIN MENU":
   after="/images/gecko/z-freeze-after.webp"
   width={2560}
   height={1792}
-  beforeAlt="Mario Golf before the fix: the sky covers the tops of the four player selection signs."
-  afterAlt="The same Mario Golf scene after the fix: all four signs are complete."
+  beforeAlt="Mario Golf before the fix: the sky covers the tops of the player selection signs."
+  afterAlt="The same Mario Golf scene after the fix: the signs are complete."
 />
 
 The signs had their full geometry, but a later draw was painting the sky over them because Gecko hadn't implemented **z-freeze**, a feature of the GameCube's graphics processor, [GX](https://www.gc-forever.com/wiki/index.php?title=Hardware_Acronyms#GP,_GX). Dolphin's [January 2015 report](https://dolphin-emu.org/blog/2015/02/01/dolphin-progress-report-january-2015/) also touches on this topic, I recommend giving it a read!
@@ -63,7 +63,7 @@ Normally, a triangle's own position determines its depth, but z-freeze lets a la
 
 ## Borrowing depth
 
-To see what changes, draw two panels with these steps, enabling z-freeze only for the final draw in the right panel:
+To see what changes, draw 2 panels with these steps, enabling z-freeze only for the final draw in the right panel:
 
 1. Draw a red rectangle at depth **0.50**, writing both color and depth.
 2. Draw a tiny triangle at depth **0.75**, with color writes and depth writes disabled.
@@ -81,13 +81,13 @@ Our reference triangle has the same depth at every corner, but a tilted triangle
 
 <Math block tex={String.raw`\operatorname{depth}(x,y) = Ax + By + C`} />
 
-In this equation, `x` and `y` are screen coordinates, `A` and `B` describe the horizontal and vertical slopes and `C` sets the depth at the origin. The coefficients come from the triangle's three vertices after they're transformed to screen coordinates: the equation must give the right depth at every corner.
+In this equation, `x` and `y` are screen coordinates, `A` and `B` describe the horizontal and vertical slopes and `C` sets the depth at the origin. The coefficients come from the triangle's 3 vertices after they're transformed to screen coordinates: the equation must give the right depth at every corner.
 
-For example, take these three corners, written as <Math tex={String.raw`(x,y,\operatorname{depth})`} />:
+For example, take these 3 corners, written as <Math tex={String.raw`(x,y,\operatorname{depth})`} />:
 
 <DepthPlaneDerivation />
 
-At <Math tex={String.raw`(100,50)`} />, that gives <Math tex={String.raw`0.10 + 0.10 + 0.20 = 0.40`} />. With z-freeze enabled, the next shape uses this same rule, including for pixels beyond the original triangle's edges. Any three corners determine a unique plane this way unless they collapse into a line or point on screen.
+At <Math tex={String.raw`(100,50)`} />, that gives <Math tex={String.raw`0.10 + 0.10 + 0.20 = 0.40`} />. With z-freeze enabled, the next shape uses this same rule, including for pixels beyond the original triangle's edges. Any 3 corners determine a unique plane this way unless they collapse into a line or point on screen.
 
 New triangles can replace the reference plane while z-freeze is off, whereas enabling it preserves the last plane. The next draw still has its own outline, colors and texture coordinates, but gets its depth from the saved equation.
 
@@ -107,6 +107,11 @@ The game's menu does something similar to the rectangle example:
 
 The signs take the role of our red rectangle and the sky takes the role of blue, but Gecko used the sky's own near depth and let it cover the signs. That draw ended at row 112, explaining the straight cutoff.
 
+With z-freeze, the saved depth puts the sky behind the signs, so the sky fails the depth test where they overlap. It still passes against the cleared background and fills the space around them.
+
+<details className="my-8 border border-border bg-muted/40 px-5 py-4 [&>p:last-child]:mb-0">
+  <summary className="cursor-pointer text-base font-semibold">Depth values from the capture</summary>
+
 In this capture, the saved plane was approximately:
 
 <Math block tex={String.raw`Z_{24} = 2.650141y + \text{16'755'356}`} />
@@ -124,6 +129,8 @@ Z_{24} &= 2.650141 \times 80.5 \\
 Since <Math tex={String.raw`\text{16'755'569} > \text{16'641'130}`} />, the sky fails the depth test and the sign stays visible.
 
 On our earlier 0-1 scale, the sign is at about `0.9919` and the sky at `0.9987`, so the sky is farther away. At a background pixel on the same row, the stored depth was `16'777'215`, so <Math tex={String.raw`\text{16'755'569} \le \text{16'777'215}`} /> still passes. The sky fills the background while leaving the sign alone.
+
+</details>
 
 ## Decals in Mario Power Tennis
 

@@ -7,7 +7,7 @@ const records = [
 const fields = ['index', 'R', 'G', 'B', 'alpha'];
 ---
 
-<div class="vertex-records not-prose" role="img" aria-label="Three five-byte records. Keep position 01 and its blue color; consume and discard index FF and all four red color bytes; keep position 02 and its blue color. FF in the alpha field means opaque, not skip.">
+<div class="vertex-records not-prose" role="img" aria-label="3 5-byte records. Keep position 01 and its blue color; consume and discard index FF and all 4 red color bytes; keep position 02 and its blue color. FF in the alpha field means opaque, not skip.">
   {records.map(record => (
     <div class:list={['record', { skipped: record.skip }]} aria-hidden="true">
       <div class="bytes">{record.bytes.map((byte, i) => <div><span>{byte}</span><small>{fields[i]}</small></div>)}</div>

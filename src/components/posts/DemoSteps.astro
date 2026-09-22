@@ -1,0 +1,37 @@
+---
+interface Props {
+  labels: string[];
+  label: string;
+}
+const { labels, label } = Astro.props;
+---
+
+<fieldset class="demo-steps" disabled aria-label={label}>
+  <ol>
+    {labels.map((text, index) => <li>
+      <button class="step-button" data-stage={index} aria-pressed={index === 0}>
+        <span class="step-number" aria-hidden="true">{index + 1}</span>
+        <span><span class="sr-only">Step {index + 1}: </span>{text}</span>
+      </button>
+      {index < labels.length - 1 && <span class="step-arrow" aria-hidden="true">→</span>}
+    </li>)}
+  </ol>
+</fieldset>
+
+<style>
+  .demo-steps { margin-bottom: 1.5rem !important; }
+  ol { display: flex; align-items: stretch; gap: .75rem; margin: 0; padding: 0; list-style: none; }
+  li { display: flex; align-items: center; gap: .75rem; min-width: 0; }
+  .step-button { display: flex; align-items: center; gap: .55rem; padding: .4rem .15rem; border: 0; background: transparent; text-align: left; line-height: 1.4; }
+  .step-button:hover { background: transparent; color: var(--primary); }
+  .step-number { display: grid; place-items: center; flex: 0 0 1.65rem; width: 1.65rem; height: 1.65rem; border: 1px solid var(--muted-foreground); border-radius: 50%; color: var(--muted-foreground); font-size: .75rem; }
+  .step-button[aria-pressed="true"] .step-number { color: var(--primary-foreground); background: var(--primary); border-color: var(--primary); }
+  .step-button[aria-pressed="true"] { font-weight: 650; }
+  .step-arrow { color: var(--muted-foreground); font-size: 1.2rem; }
+  @media (max-width: 520px) {
+    ol { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+    li { display: block; position: relative; }
+    .step-button { width: 100%; flex-direction: column; gap: .5rem; text-align: center; padding: .25rem 0; font-size: .8rem; }
+    .step-arrow { position: absolute; right: -.85rem; top: .2rem; }
+  }
+</style>

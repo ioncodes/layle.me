@@ -1,0 +1,92 @@
+---
+import '../../styles/galaxy-wpar-demos.css';
+const values=[256,128,64,32,16,8,4,2,1];
+---
+<gx-galaxy-bits class="gx-demo galaxy-wpar-demo not-prose">
+  <fieldset disabled>
+    <label>Wide result: <output data-wide>447</output>
+      <input data-wide-slider type="range" min="0" max="511" value="447" aria-label="Wide alpha result" />
+    </label>
+    <div class="bits-presets">{[255,256,383,447].map(n=><button type="button" data-preset={n} aria-pressed={n===447}>{n===447?'447 · Mario':n}</button>)}</div>
+    <div class="bits-row" role="group" aria-label="Binary representation. Toggle individual bits.">
+      {values.map((v,i)=><button type="button" data-bit={v} aria-pressed={Boolean(447&v)} aria-label={`Toggle the bit worth ${v}`} class={i===0?'bits-high':''}><small>{v}</small><strong>{447&v?'1':'0'}</strong></button>)}
+    </div>
+    <div class="bits-bracket" aria-hidden="true"><span>Drop</span><span>Keep these 8 bits</span></div>
+    <div class="bits-formula">
+      <select data-mode aria-label="Alpha conversion"><option value="wrap">Keep the low 8 bits</option><option value="clamp">Clamp to 255</option><option value="unchanged">Leave unchanged</option></select>
+      <p class="bits-equation" data-equation>447 = 256 + 191</p>
+    </div>
+  </fieldset>
+  <div class="bits-result">
+    <div class="bits-output" aria-live="polite">
+      <span class="bits-output-number"><span>Output alpha</span><strong data-output>191</strong></span>
+      <span class="bits-verdict" data-verdict>Passes alpha test</span>
+    </div>
+    <div class="bits-scale" data-scale role="img" aria-label="Alpha 191 is inside the accepted range of 128 to 255." style="--output-position:37.3777%">
+      <div class="bits-track" aria-hidden="true"><span class="bits-accepted"><span>Accepted</span></span><span class="bits-marker"></span></div>
+      <div class="bits-ticks" aria-hidden="true"><span>0</span><span>128</span><span>255</span><span>511</span></div>
+    </div>
+  </div>
+</gx-galaxy-bits>
+<script>
+  import { convertAlpha, eyePasses, type OutputMode } from './galaxy-alpha';
+  class GalaxyBits extends HTMLElement {
+    connectedCallback(){
+      const slider=this.querySelector<HTMLInputElement>('[data-wide-slider]')!,mode=this.querySelector<HTMLSelectElement>('[data-mode]')!;
+      const update=()=>{
+        const value=Number(slider.value),out=convertAlpha(value,mode.value as OutputMode);
+        this.querySelector('[data-wide]')!.textContent=String(value);
+        this.querySelectorAll<HTMLButtonElement>('[data-bit]').forEach(b=>{const bit=Number(b.dataset.bit),on=Boolean(value&bit);b.setAttribute('aria-pressed',String(on));b.querySelector('strong')!.textContent=on?'1':'0';});
+        this.querySelectorAll<HTMLButtonElement>('[data-preset]').forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.preset)===value)));
+        this.querySelector('[data-equation]')!.textContent=mode.value==='wrap'?`${value} = ${value&256} + ${out}`:mode.value==='clamp'?`min(${value}, 255) = ${out}`:`${value} stays ${out}`;
+        this.querySelector('[data-output]')!.textContent=String(out);
+        this.querySelector('[data-verdict]')!.textContent=eyePasses(out)?'Passes alpha test':'Fails alpha test';
+        const scale=this.querySelector<HTMLElement>('[data-scale]')!;
+        scale.style.setProperty('--output-position',`${out/511*100}%`);
+        scale.setAttribute('aria-label',`Alpha ${out} is ${eyePasses(out)?'inside':'outside'} the accepted range of 128 to 255.`);
+        this.dataset.mode=mode.value;this.dataset.passes=String(eyePasses(out));
+      };
+      slider.oninput=update;mode.onchange=update;
+      this.querySelectorAll<HTMLButtonElement>('[data-bit]').forEach(b=>b.onclick=()=>{slider.value=String(Number(slider.value)^Number(b.dataset.bit));update();});
+      this.querySelectorAll<HTMLButtonElement>('[data-preset]').forEach(b=>b.onclick=()=>{slider.value=b.dataset.preset!;update();});this.querySelector('fieldset')!.disabled=false;update();
+    }
+  }
+  if(!customElements.get('gx-galaxy-bits'))customElements.define('gx-galaxy-bits',GalaxyBits);
+</script>
+<style>
+  .bits-presets{display:flex;flex-wrap:wrap;gap:.4rem;}
+  .bits-presets [aria-pressed="true"]{border-color:var(--foreground);background:var(--muted);}
+  .bits-row{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:4px;margin-top:1.5rem;}
+  .bits-row button{padding:.5rem 0;border-radius:0;min-width:0;}
+  .bits-row small{display:block;font:.68rem ui-monospace,monospace;color:var(--muted-foreground);}
+  .bits-row strong{display:block;font:600 1.6rem ui-monospace,monospace;margin-top:.35rem;}
+  .bits-row [aria-pressed="true"]{background:var(--gx-cell-blue);border-color:var(--gx-blue);}
+  [data-mode="wrap"] .bits-high{background:var(--gx-cell-red)!important;border-color:var(--gx-red)!important;}
+  [data-mode="wrap"] .bits-high strong{text-decoration:line-through;color:var(--gx-red-text);}
+  .bits-bracket{display:grid;grid-template-columns:1fr 8fr;gap:4px;text-align:center;font-size:.7rem;margin-top:.5rem;color:var(--muted-foreground);}
+  .bits-bracket span{border-top:1px solid var(--border);padding-top:.35rem;}
+  [data-mode="clamp"] .bits-bracket,[data-mode="unchanged"] .bits-bracket{visibility:hidden;}
+  .bits-formula{display:flex;flex-wrap:wrap;align-items:center;gap:.75rem 1.5rem;margin-top:1.2rem;}
+  .bits-equation{font:600 .95rem/1.65 ui-monospace,monospace;margin:0;}
+  .bits-formula select{width:auto;max-width:100%;margin:0;}
+  .bits-result{margin-top:1.5rem;}
+  .bits-output{display:flex;align-items:center;justify-content:space-between;gap:1rem;}
+  .bits-output-number{display:flex;align-items:baseline;gap:.75rem;}
+  .bits-output-number>span{font-size:.85rem;color:var(--muted-foreground);}
+  .bits-output-number strong{font-size:2rem;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.2;}
+  .bits-verdict{font-size:.85rem;}
+  .bits-scale{margin-top:2rem;}
+  .bits-track{position:relative;height:8px;background:var(--muted);border:1px solid var(--border);}
+  .bits-accepted{position:absolute;inset:-1px auto -1px 25.0489%;width:24.8532%;background:var(--gx-cell-green);border:1px solid var(--gx-green);}
+  .bits-accepted>span{position:absolute;bottom:calc(100% + 5px);left:50%;transform:translateX(-50%);font-size:.7rem;color:var(--muted-foreground);}
+  .bits-marker{position:absolute;left:clamp(1px,var(--output-position),calc(100% - 1px));top:-5px;width:2px;height:16px;transform:translateX(-50%);background:var(--foreground);}
+  .bits-marker::before{content:'';position:absolute;left:-2px;top:-2px;width:6px;height:6px;border-radius:50%;background:var(--foreground);}
+  .bits-ticks{position:relative;height:1.5rem;margin-top:.5rem;color:var(--muted-foreground);font-size:.7rem;font-variant-numeric:tabular-nums;}
+  .bits-ticks span{position:absolute;top:0;}
+  .bits-ticks span:nth-child(1){left:0;}
+  .bits-ticks span:nth-child(2){left:25.0489%;transform:translateX(-50%);}
+  .bits-ticks span:nth-child(3){left:49.9022%;transform:translateX(-50%);}
+  .bits-ticks span:nth-child(4){right:0;}
+  .bits-note{font-size:.8rem;color:var(--muted-foreground);}
+  @media(max-width:400px){.bits-row{gap:2px;}.bits-row strong{font-size:1.3rem;}.bits-row small{font-size:.59rem;}.bits-output-number{gap:.5rem;}.bits-verdict{font-size:.78rem;}}
+</style>

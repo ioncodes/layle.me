@@ -36,7 +36,7 @@ The cause was a position index meaning **skip this vertex**, which Gecko treated
 
 The GameCube's graphics processor, [GX](https://www.gc-forever.com/wiki/index.php?title=Hardware_Acronyms#GP,_GX), fills triangles built from **vertices**: corners with positions and attributes such as color.
 
-In a [triangle strip](https://wikis.khronos.org/opengl/Primitive#Triangle_primitives), the first three vertices make a triangle and each additional vertex makes another triangle with the previous two corners. Number a rectangle's corners like this:
+In a [triangle strip](https://wikis.khronos.org/opengl/Primitive#Triangle_primitives), the first 3 vertices make a triangle and each additional vertex makes another triangle with the previous 2 corners. Number a rectangle's corners like this:
 
 ```text
 0 ------ 2
@@ -45,7 +45,7 @@ In a [triangle strip](https://wikis.khronos.org/opengl/Primitive#Triangle_primit
 1 ------ 3
 ```
 
-Sending `0, 1, 2, 3` makes triangles `0, 1, 2` and `2, 1, 3`, which share the diagonal between corners 1 and 2. GX uses the order of a triangle's vertices to tell its front from its back: going around them clockwise faces the opposite way to going counterclockwise. Swapping the first two vertices of every other triangle keeps this **winding order** consistent, so both face the same way.
+Sending `0, 1, 2, 3` makes triangles `0, 1, 2` and `2, 1, 3`, which share the diagonal between corners 1 and 2. GX uses the order of a triangle's vertices to tell its front from its back: going around them clockwise faces the opposite way to going counterclockwise. Swapping the first 2 vertices of every other triangle keeps this **winding order** consistent, so both face the same way.
 
 Games can send coordinates directly or use **indices** into a position array, where index `2` means "use position number 2" and saves us from sending those coordinates again.
 
@@ -74,19 +74,19 @@ Select "Array entry" below to fetch the reserved index as point P and show the t
 
 <VertexSkipDemo />
 
-Move `0xff` to the end: fetching P adds one red triangle to the blue rectangle, just like Luigi's spike.
+Move `0xff` to the end: fetching P adds 1 red triangle to the blue rectangle, just like Luigi's spike.
 
-With `0xff` in the middle, the demo's restart option splits the strip into two pairs of vertices, neither of which can form a triangle. The dashed outline is just a guide.
+With `0xff` in the middle, the demo's restart option splits the strip into 2 pairs of vertices, neither of which can form a triangle. The dashed outline is just a guide.
 
 ## Back to Luigi
 
-The affected Mario Golf strip contained 11 valid vertices followed by a skip record, but Gecko fetched a position for that final record anyway and interpreted unrelated memory as:
+The affected Mario Golf strip ended with a skip record, but Gecko fetched a position for it anyway and interpreted unrelated memory as:
 
 ```text
 [-27.166016, 15.875, 0.0]
 ```
 
-Transforming that point and connecting it to the previous two corners produced the spike.
+Transforming that point and connecting it to the previous 2 corners produced the spike.
 
 The fix removes skipped records before vertex decoding and updates the vertex count **for each draw**. Keeping draws separate prevents a removed record from accidentally joining one draw's vertices to the next.
 
@@ -96,13 +96,13 @@ Those corrected boundaries also feed the depth plane tracking used by [z-freeze]
 
 Skipping a vertex doesn't remove its bytes from the incoming command stream.
 
-For example, an 8-bit position index followed by an **RGBA** color takes five bytes, even when the vertex is skipped. Here are three consecutive records:
+For example, an 8-bit position index followed by an **RGBA** color takes 5 bytes, even when the vertex is skipped. Here are 3 consecutive records:
 
 <VertexRecords />
 
-After reading the skip index `FF`, the parser must pass over all four color bytes or it will mistake `E6` for the next position index and lose its place. The alpha byte `FF` just means fully opaque.
+After reading the skip index `FF`, the parser must pass over all 4 color bytes or it will mistake `E6` for the next position index and lose its place. The alpha byte `FF` just means fully opaque.
 
-A 16-bit position index takes two bytes, making the same record six bytes long, while other formats can add more attributes. The active format determines the position field and record boundaries.
+A 16-bit position index takes 2 bytes, making the same record 6 bytes long, while other formats can add more attributes. The active format determines the position field and record boundaries.
 
 The simplified logic looks like this:
 
@@ -120,7 +120,7 @@ assemble the draw's triangles from the retained vertices
 
 ## Checking the behavior
 
-My [test](https://github.com/ioncodes/gamecube-wii-tests/tree/master/vertex-skip) draws the same rectangle with direct positions, 8-bit indices and 16-bit indices, inserting a skip between vertices 1 and 2 in both indexed versions. All three should match:
+My [test](https://github.com/ioncodes/gamecube-wii-tests/tree/master/vertex-skip) draws the same rectangle with direct positions, 8-bit indices and 16-bit indices, inserting a skip between vertices 1 and 2 in both indexed versions. All 3 should match:
 
 <TestPanels kind="vertex-skip" />
 

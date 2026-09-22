@@ -1,0 +1,64 @@
+---
+import '../../styles/galaxy-wpar-demos.css';
+import DemoSteps from './DemoSteps.astro';
+const n = 12;
+---
+
+<gx-wpar-padding class="gx-demo galaxy-wpar-demo not-prose">
+  <DemoSteps labels={['Before padding', 'Add 31 zeros', 'Write WPAR']} label="Follow the padding and reset" />
+  <div class="padding-legend"><span class="useful">Useful data</span><span class="padding">Zero padding</span><span class="empty">Empty slot</span></div>
+  <div class="padding-row"><span data-burst-label>Partial burst · not transferred yet</span><div class="padding-cells" data-burst aria-hidden="true">{Array.from({length: 32}, (_, i) => <span class={i < n ? 'useful' : 'empty'}>{i < n ? 'D' : '·'}</span>)}</div></div>
+  <div class="padding-row"><span data-tail-label>Tail left in the gather pipe</span><div class="padding-cells" data-tail aria-hidden="true">{Array.from({length: 32}, () => <span class="empty">·</span>)}</div></div>
+  <fieldset class="gx-slider-controls" disabled>
+    <label>Useful bytes in the last partial burst: <output data-count>12</output> of 32
+      <input data-count-input type="range" min="0" max="31" value="12" aria-label="Useful bytes in the partial burst" />
+    </label>
+  </fieldset>
+  <noscript><p>Adding 31 zeros completes the 32-byte burst and leaves 11 padding bytes behind. Writing WPAR discards those 11 bytes.</p></noscript>
+</gx-wpar-padding>
+
+<script>
+  class WparPadding extends HTMLElement {
+    connectedCallback() {
+      let stage = 0;
+      const slider = this.querySelector<HTMLInputElement>('[data-count-input]')!;
+      const paint = (selector: string, useful: number, padding: number) => {
+        this.querySelectorAll<HTMLElement>(`${selector} > span`).forEach((cell, i) => {
+          cell.className = i < useful ? 'useful' : i < useful + padding ? 'padding' : 'empty';
+          cell.textContent = i < useful ? 'D' : i < useful + padding ? '00' : '·';
+        });
+      };
+      const update = () => {
+        const n = Number(slider.value), tail = n === 0 ? 31 : n - 1;
+        this.querySelector('[data-count]')!.textContent = String(n);
+        const emitted = stage > 0 && n > 0;
+        paint('[data-burst]', emitted || stage === 0 ? n : 0, emitted ? 32 - n : 0);
+        paint('[data-tail]', 0, stage === 1 ? tail : 0);
+        this.querySelector('[data-burst-label]')!.textContent = emitted ? '32 bytes transferred to RAM' : stage > 0 ? 'No burst transferred · there was no useful tail' : 'Partial burst · not transferred yet';
+        this.querySelector('[data-tail-label]')!.textContent = stage === 2 ? `${tail} unused padding bytes discarded` : 'Tail left in the gather pipe';
+        this.querySelectorAll<HTMLButtonElement>('[data-stage]').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.stage) === stage)));
+      };
+      slider.oninput = update;
+      this.querySelectorAll<HTMLButtonElement>('[data-stage]').forEach(b => b.onclick = () => {stage = Number(b.dataset.stage); update();});
+      this.querySelectorAll('fieldset').forEach(fieldset => fieldset.disabled = false);
+      update();
+    }
+  }
+  if (!customElements.get('gx-wpar-padding')) customElements.define('gx-wpar-padding', WparPadding);
+</script>
+
+<style>
+  gx-wpar-padding { padding-bottom: 0; margin-bottom: 1rem; }
+  gx-wpar-padding .gx-slider-controls { margin: .5rem 0 0; }
+  .gx-slider-controls input[type="range"] { margin: .5rem 0 0; }
+  .padding-legend { display: flex; flex-wrap: wrap; gap: .5rem 1rem; font-size: .75rem; margin: 1rem 0; }
+  .padding-legend span { padding: .2rem .5rem; }
+  .padding-row { margin: 1rem 0 0; }
+  .padding-row > span { font-size: .8rem; display: block; margin-bottom: .5rem; }
+  .padding-cells { display: grid; grid-template-columns: repeat(16, minmax(0, 1fr)); gap: 3px; }
+  .padding-cells > span { display: grid; place-items: center; min-height: 2.2rem; font: .8rem ui-monospace, monospace; }
+  .useful { background: var(--gx-cell-blue); color: var(--foreground); }
+  .padding { background: var(--gx-cell-gold); color: var(--foreground); }
+  .empty { background: var(--muted); color: var(--muted-foreground); }
+  @media (max-width: 480px) { .padding-cells { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
+</style>
