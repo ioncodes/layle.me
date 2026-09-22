@@ -18,7 +18,7 @@ const calculations = bytes.slice(0, -3).map((_, offset) => {
   const exponent = parseInt(bits.slice(1, 9), 2), fraction = parseInt(bits.slice(9), 2);
   if (exponent === 255) return String.raw`\text{${fraction ? 'NaN' : bits[0] === '1' ? 'Negative infinity' : 'Positive infinity'}}`;
   const significand = String.raw`\frac{\text{${grouped(fraction)}}}{2^{23}}`;
-  const value = formatFloat(decodeFloat(word)).replace('−', '-').replace(/e([+-]?\d+)/, (_, n) => String.raw`\times 10^{${Number(n)}}`);
+  const value = formatFloat(decodeFloat(word)).replace(/e([+-]?\d+)/, (_, n) => String.raw`\times 10^{${Number(n)}}`);
   return String.raw`\begin{aligned}
     &${bits[0] === '1' ? '-' : ''}${exponent === 0 ? significand : String.raw`\left(1 + ${significand}\right)`} 2^{${exponent === 0 ? -126 : exponent - 127}} \\
     &\approx ${value}

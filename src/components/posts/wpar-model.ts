@@ -11,8 +11,8 @@ export function decodeFloat(bytes: number[]) {
 }
 export function formatFloat(value: number) {
   if (!Number.isFinite(value)) return String(value);
-  if (value === 0) return Object.is(value, -0) ? '−0' : '0';
+  if (value === 0) return Object.is(value, -0) ? '-0' : '0';
   return Math.abs(value) < 0.0001 || Math.abs(value) >= 1000000
-    ? value.toExponential(6).replace('-', '−')
+    ? value.toExponential(6)
     : Number(value.toPrecision(8)).toLocaleString('en-US', { maximumSignificantDigits: 8 }).replaceAll(',', "'");
 }
