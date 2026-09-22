@@ -41,7 +41,7 @@ import '../../styles/galaxy-wpar-demos.css';
 <style>
   .head-toolbar,.head-modes,.head-options{display:flex;flex-wrap:wrap;align-items:center;gap:.6rem;}
   .head-toolbar{justify-content:space-between;margin-bottom:1rem!important;}
-  .head-modes [aria-pressed="true"]{background:var(--foreground);color:var(--background);}
+  .head-modes [aria-pressed="true"]{border-color:var(--primary);background:color-mix(in srgb,var(--primary) 14%,var(--background));color:var(--foreground);}
   .head-stage{position:relative;background:var(--muted);overflow:hidden;}
   .head-stage img{width:100%;height:auto;margin:0;display:block;}
   .head-stage canvas{display:block;width:100%;height:460px;cursor:grab;touch-action:pan-y;}

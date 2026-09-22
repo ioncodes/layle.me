@@ -55,7 +55,7 @@ const values=[256,128,64,32,16,8,4,2,1];
 </script>
 <style>
   .bits-presets{display:flex;flex-wrap:wrap;gap:.4rem;}
-  .bits-presets [aria-pressed="true"]{border-color:var(--foreground);background:var(--muted);}
+  .bits-presets [aria-pressed="true"]{border-color:var(--primary);background:color-mix(in srgb,var(--primary) 14%,var(--background));color:var(--foreground);}
   .bits-row{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:4px;margin-top:1.5rem;}
   .bits-row button{padding:.5rem 0;border-radius:0;min-width:0;}
   .bits-row small{display:block;font:.68rem ui-monospace,monospace;color:var(--muted-foreground);}
