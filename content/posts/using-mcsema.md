@@ -8,7 +8,6 @@ image:
   fit: contain
 tags: ["llvm", "lifting", "mcsema"]
 date: 2021-07-24T22:00:00Z
-sticky: false
 ---
 
 

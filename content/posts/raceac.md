@@ -8,7 +8,6 @@ image:
   position: "left top"
 tags: ["reverse-engineering", "c++", "game-hacking", "anti-cheat"]
 date: 2021-06-03T22:00:00Z
-sticky: true
 ---
 
 

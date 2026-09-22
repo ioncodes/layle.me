@@ -8,7 +8,6 @@ image:
   fit: contain
 tags: ["llvm", "c++", "cmake"]
 date: 2021-08-22T22:00:00Z
-sticky: false
 ---
 
 

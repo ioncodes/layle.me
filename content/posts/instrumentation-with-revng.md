@@ -8,7 +8,6 @@ image:
   position: "left top"
 tags: ["lifting", "c++", "revng", "llvm"]
 date: 2021-08-23T06:59:00Z
-sticky: false
 ---
 
 
