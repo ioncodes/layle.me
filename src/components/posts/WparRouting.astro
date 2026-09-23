@@ -29,8 +29,12 @@ function routingPlot(compact: boolean) {
     ? [[53, 32, 83, 32], [211, 32, 264, 32], [80, 98, 80, 124], [254, 98, 254, 124], [80, 180, 80, 209]]
     : [[75, 100, 132, 100], [288, 100, 330, 100], [446, 48, 493, 48], [446, 156, 493, 156], [647, 48, 735, 48]];
   const branches = compact
-    ? [[[296, 53], [296, 98], [80, 98]]]
-    : [[[400, 100], [446, 100]], [[446, 48], [446, 156]]];
+    ? [{ points: [[296, 53], [296, 98], [80, 98]], stroke: 'var(--gx-blue-text)' }]
+    : [
+      { points: [[400, 100], [446, 100]], stroke: 'var(--gx-blue-text)' },
+      { points: [[446, 48], [446, 100]], stroke: 'var(--gx-blue-text)' },
+      { points: [[446, 100], [446, 156]], stroke: 'var(--gx-gold-text)' },
+    ];
   const labels = compact
     ? [{ x: 10, y: 113, text: 'Drawing' }, { x: 180, y: 113, text: 'Skinning' }]
     : [{ x: 493, y: 10, text: 'Drawing' }, { x: 493, y: 118, text: 'Skinning' }];
@@ -41,7 +45,7 @@ function routingPlot(compact: boolean) {
     y: { domain: [0, height], reverse: true, axis: null },
     style: { background: 'transparent', color: 'var(--foreground)', fontFamily: 'inherit', fontSize: '14px' },
     marks: [
-      ...branches.map(points => Plot.line(points, { stroke: 'var(--gx-blue-text)', strokeWidth: 1.5 })),
+      ...branches.map(({ points, stroke }) => Plot.line(points, { stroke, strokeWidth: 1.5 })),
       Plot.arrow(arrows, {
         x1: d => d[0], y1: d => d[1], x2: d => d[2], y2: d => d[3],
         stroke: (_, i) => i === 3 ? 'var(--gx-gold-text)' : 'var(--gx-blue-text)', strokeWidth: 1.5, headLength: 6,
