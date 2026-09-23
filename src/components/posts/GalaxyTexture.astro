@@ -3,9 +3,12 @@ import '../../styles/galaxy-wpar-demos.css';
 ---
 <gx-galaxy-texture class="gx-demo galaxy-wpar-demo not-prose">
   <div class="texture-layout">
-    <div class="texture-image">
-      <img data-texture src="/images/galaxy-eyes/eye-open.png" alt="The game's 64 by 64 open-eye texture, enlarged to show its texels." width="64" height="64" loading="lazy" />
-      <span data-crosshair aria-hidden="true"></span>
+    <div>
+      <div class="texture-image">
+        <img data-texture src="/images/galaxy-eyes/eye-open.png" alt="The game's 64 by 64 open-eye texture, enlarged to show its texels." width="64" height="64" loading="lazy" draggable="false" aria-describedby="galaxy-texture-hint" />
+        <span data-crosshair aria-hidden="true"></span>
+      </div>
+      <p id="galaxy-texture-hint" class="texture-hint" hidden>Click, tap or drag to inspect a texel.</p>
     </div>
     <div>
       <fieldset disabled class="texture-controls">
@@ -30,8 +33,6 @@ import '../../styles/galaxy-wpar-demos.css';
       let pixels:ImageData|undefined,ready=false;
       const update=()=>{
         if(!pixels)return;
-        display.src=`/images/galaxy-eyes/eye-${select.value}.png`;
-        display.alt=`The game's ${select.options[select.selectedIndex].text.toLowerCase()} eye texture.`;
         const px=Number(x.value),py=Number(y.value),i=(py*64+px)*4;
         this.querySelector('[data-readout]')!.textContent=`Texel (${px}, ${py}) · RGB ${pixels.data[i]}, ${pixels.data[i+1]}, ${pixels.data[i+2]}`;
         const cross=this.querySelector<HTMLElement>('[data-crosshair]')!;cross.style.left=`${(px+.5)/64*100}%`;cross.style.top=`${(py+.5)/64*100}%`;
@@ -42,10 +43,36 @@ import '../../styles/galaxy-wpar-demos.css';
         try{await im.decode();}catch{this.querySelector('[data-readout]')!.textContent='The texture could not load. The captured open-eye texture is fully opaque.';return;}
         if(!this.isConnected||generation!==this.generation)return;
         ctx.clearRect(0,0,64,64);ctx.drawImage(im,0,0);pixels=ctx.getImageData(0,0,64,64);
+        display.src=im.src;
+        display.alt=`The game's ${select.options[select.selectedIndex].text.toLowerCase()} eye texture.`;
+        this.querySelector<HTMLElement>('.texture-hint')!.hidden=false;
         ready=true;this.querySelector('fieldset')!.disabled=false;update();
       };
       x.oninput=y.oninput=update;select.onchange=load;
-      display.onclick=e=>{if(!ready)return;const rect=display.getBoundingClientRect();x.value=String(Math.max(0,Math.min(63,Math.floor((e.clientX-rect.left)/rect.width*64))));y.value=String(Math.max(0,Math.min(63,Math.floor((e.clientY-rect.top)/rect.height*64))));update();};
+      const inspectTexel=(e:PointerEvent)=>{
+        if(!ready)return;
+        const rect=display.getBoundingClientRect();
+        x.value=String(Math.max(0,Math.min(63,Math.floor((e.clientX-rect.left)/rect.width*64))));
+        y.value=String(Math.max(0,Math.min(63,Math.floor((e.clientY-rect.top)/rect.height*64))));
+        update();
+      };
+      display.onpointerdown=e=>{
+        if(!ready||!e.isPrimary||e.button!==0)return;
+        e.preventDefault();
+        display.setPointerCapture(e.pointerId);
+        inspectTexel(e);
+      };
+      display.onpointermove=e=>{
+        if(display.hasPointerCapture(e.pointerId))inspectTexel(e);
+      };
+      display.onpointerup=e=>{
+        if(!display.hasPointerCapture(e.pointerId))return;
+        inspectTexel(e);
+        display.releasePointerCapture(e.pointerId);
+      };
+      display.onpointercancel=e=>{
+        if(display.hasPointerCapture(e.pointerId))display.releasePointerCapture(e.pointerId);
+      };
       load();
     }
     disconnectedCallback(){this.generation++;}
@@ -55,7 +82,8 @@ import '../../styles/galaxy-wpar-demos.css';
 <style>
   .texture-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:2rem;align-items:center;}
   .texture-image{position:relative;max-width:280px;width:100%;margin:auto;border:1px solid var(--border);}
-  .texture-image img{display:block;width:100%;height:auto;margin:0;image-rendering:pixelated;cursor:crosshair;}
+  .texture-image img{display:block;width:100%;height:auto;margin:0;image-rendering:pixelated;cursor:crosshair;touch-action:none;user-select:none;}
+  .texture-hint{font-size:.8rem;text-align:center;color:var(--muted-foreground);margin:.6rem 0 0;}
   [data-crosshair]{position:absolute;left:44.5%;top:46%;width:9px;height:9px;border:1px solid black;outline:1px solid white;transform:translate(-50%,-50%);pointer-events:none;}
   .texture-controls label{margin-top:.75rem;}
   .texture-readout{font:.8rem/1.7 ui-monospace,monospace;min-height:3.5em;}

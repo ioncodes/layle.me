@@ -35,6 +35,25 @@ export function depthPlot({ frozen = true, sloped = false, width = 350, document
   });
 }
 
+export function depthOverflowPlot({ width = 640, document }: RenderOptions = {}) {
+  // Simplified wrap-and-clamp model alongside actual Wii Z24 readbacks.
+  const model = [[0, 0], [1, 1], [4, 1], [4, 0], [8, 0], [9, 1], [12, 1], [12, 0], [16, 0], [17, 1]];
+  const measured = [[0.25, 0x400000], [1.25, 0xffffff], [3.75, 0xffffff], [4.25, 0], [7.75, 0],
+    [8.25, 0x3ff7e0], [11.75, 0xffffff], [12.25, 0], [15.75, 0], [16.25, 0x3fefc0], [16.75, 0xbfef3e]];
+  return Plot.plot({
+    document, width, height: 235, marginLeft: 42, marginRight: 18, marginTop: 30, marginBottom: 44,
+    style: { background: 'transparent', fontFamily: 'inherit', fontSize: '13px' },
+    ariaLabel: 'Clamping alone keeps depth at 1 above the normal range. The wrap-and-clamp model drops to 0 at 4 and 12 and repeats every 8 units. Wii readings follow this pattern.',
+    x: { domain: [0, 17.5], ticks: [0, 4, 8, 12, 16], label: 'Calculated depth', labelArrow: false },
+    y: { domain: [-0.08, 1.08], ticks: [0, 0.5, 1], grid: true, label: 'Stored depth', labelArrow: false },
+    marks: [
+      Plot.line([[0, 0], [1, 1], [17, 1]], { stroke: 'var(--gx-red)', strokeWidth: 5, strokeDasharray: '5 5' }),
+      Plot.line(model, { stroke: 'var(--gx-blue)', strokeWidth: 2.5 }),
+      Plot.dot(measured.map(([x, z]) => [x, z / 2 ** 24]), { r: 3.5, fill: 'var(--foreground)' }),
+    ],
+  });
+}
+
 const positions = [
   { x: 0, y: 0, name: '0' }, { x: 0, y: 180, name: '1' },
   { x: 140, y: 0, name: '2' }, { x: 140, y: 180, name: '3' },

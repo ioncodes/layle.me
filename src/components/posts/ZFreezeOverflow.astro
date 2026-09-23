@@ -1,0 +1,47 @@
+---
+import { parseHTML } from 'linkedom';
+import { depthOverflowPlot } from './gx-plots';
+import '../../styles/gx-demos.css';
+const { document } = parseHTML('<html></html>');
+---
+
+<gx-z-freeze-overflow class="gx-demo not-prose">
+  <figure>
+    <div data-plot class="gx-plot" set:html={depthOverflowPlot({ document }).outerHTML} />
+    <div class="gx-legend" aria-hidden="true">
+      <span class="gx-red">Clamp only</span>
+      <span class="gx-blue">Wrap then clamp</span>
+      <span class="readings">Wii readings</span>
+    </div>
+    <figcaption>The drops at 4 and 12 explain why clamping alone fails.</figcaption>
+  </figure>
+</gx-z-freeze-overflow>
+
+<style>
+  figure { margin: 0; }
+  .gx-legend { justify-content: center; }
+  .gx-red::before { border-top-style: dashed; }
+  .readings::before { width: .45rem !important; height: .45rem; border: 0 !important; border-radius: 50%; background: currentColor; }
+  figcaption { margin-top: .5rem; text-align: center; font-size: .875rem; color: var(--muted-foreground); }
+</style>
+
+<script>
+  import { depthOverflowPlot } from './gx-plots';
+  class ZFreezeOverflow extends HTMLElement {
+    observer?: ResizeObserver;
+    connectedCallback() {
+      const plot = this.querySelector<HTMLElement>('[data-plot]')!;
+      let lastWidth = 0;
+      this.observer = new ResizeObserver(() => {
+        const width = Math.round(plot.clientWidth);
+        if (width > 0 && width !== lastWidth) {
+          lastWidth = width;
+          plot.replaceChildren(depthOverflowPlot({ width }));
+        }
+      });
+      this.observer.observe(plot);
+    }
+    disconnectedCallback() { this.observer?.disconnect(); }
+  }
+  customElements.define('gx-z-freeze-overflow', ZFreezeOverflow);
+</script>

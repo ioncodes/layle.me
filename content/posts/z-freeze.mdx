@@ -14,7 +14,9 @@ import ImageComparison from '../../src/components/posts/ImageComparison.astro';
 import ZFreezeDemo from '../../src/components/posts/ZFreezeDemo.astro';
 import TestPanels from '../../src/components/posts/TestPanels.astro';
 import DepthPlaneDerivation from '../../src/components/posts/DepthPlaneDerivation.astro';
+import ZFreezeOverflow from '../../src/components/posts/ZFreezeOverflow.astro';
 import Math from '../../src/components/Math.astro';
+import ImagePreview from '../../src/components/ImagePreview';
 
 While working on [Gecko](https://github.com/ioncodes/gecko), my GameCube and Wii emulator, I noticed that the upper parts of the player selection signs were missing in *Mario Golf: Toadstool Tour*. Everything below them looked fine.
 
@@ -86,7 +88,7 @@ For example, take these 3 corners, written as <Math tex={String.raw`(x,y,\operat
 
 <DepthPlaneDerivation />
 
-At <Math tex={String.raw`(100,50)`} />, that gives <Math tex={String.raw`0.10 + 0.10 + 0.20 = 0.40`} />. With z-freeze enabled, the next shape uses this same rule, including for pixels beyond the original triangle's edges. Any 3 corners determine a unique plane this way unless they collapse into a line or point on screen.
+At <Math tex={String.raw`(100,50)`} />, that gives <Math tex={String.raw`0.10 + 0.10 + 0.20 = 0.40`} />. With z-freeze enabled, the next shape evaluates this same equation, including for pixels beyond the original triangle's edges. The calculated value can then fall outside the depth buffer's range, which needs [another step before the depth test](#when-the-plane-overflows). Any 3 corners determine a unique plane this way unless they collapse into a line or point on screen.
 
 New triangles can replace the reference plane while z-freeze is off, whereas enabling it preserves the last plane. The next draw still has its own outline, colors and texture coordinates, but gets its depth from the saved equation.
 
@@ -94,7 +96,7 @@ Try switching between a flat and sloped reference in the graph below, which foll
 
 <ZFreezeDemo />
 
-With the sloped reference, blue is nearer on the left and farther away on the right because the frozen equation still gives a different result at each pixel. Depth tests and writes continue to work as usual.
+With the sloped reference, blue is nearer on the left and farther away on the right because the frozen equation still gives a different result at each pixel. This example stays within the 0-1 depth range, where depth tests and writes work as described above.
 
 ## Back to Mario Golf
 
@@ -143,14 +145,58 @@ The fix also stopped the floor decals flickering on *Mario Power Tennis*'s Plaza
   <figcaption className="mt-2 text-center text-sm text-muted-foreground">Watch the missing bands in the floor logos on the left.</figcaption>
 </figure>
 
+## When the plane overflows
+
+Mario Golf looked right, but hazelwiss found another problem when testing [steeper planes and different reference primitives](https://github.com/ioncodes/gamecube-wii-tests/tree/db2f3ad67914d6b3e105cfd7ac0d2c859b85a115/z-freeze) on hardware. Gecko left the whole red rectangle visible in the sloped cases, whereas the Wii covered part of it with blue.
+
+The reference vertices were still between 0 and 1. Extending their plane beyond the triangle was what pushed the calculated depth out of range: a slope of **0.5 every 8 pixels** gives <Math tex={String.raw`0.25 + 32 \times \frac{0.5}{8} = 2.25`} /> just 32 pixels past a corner at depth 0.25.
+
+Gecko clamped that result to the maximum depth, putting blue behind red. To find out what the Wii was doing, we used a test that writes depth with `GX_ALWAYS`, then reads it back with `GX_PeekZ`. The horizontal and vertical tests gave the same readings in <ImagePreview client:load src="/images/gecko/z-freeze-hardware.webp" label="Hazel's hardware photo" alt="Hazel's Wii showing the D, H and V depth readbacks. Both slope directions produce matching values, including zero at 4.25 and 12.25." width={1736} height={2312} />:
+
+<div className="[&_code]:whitespace-nowrap [&_code]:before:content-none [&_code]:after:content-none">
+
+| Plane depth | Wii Z24 | Rounded |
+| --- | --- | --- |
+| 0.25 | `0x400000` | 0.25 |
+| 1.25 | `0xFFFFFF` | 1 |
+| 4.25 | `0x000000` | 0 |
+| 8.25 | `0x3FF7E0` | 0.25 |
+| 12.25 | `0x000000` | 0 |
+| 16.25 | `0x3FEFC0` | 0.25 |
+
+</div>
+
+If the Wii only clamped, **every value above 1 would become the maximum**. Instead, 4.25 became 0 and 8.25 came back close to 0.25. Something was changing the value before it reached that limit.
+
+There was a pattern too: **0.25, 8.25 and 16.25** all came back close to **0.25**, while **4.25 and 12.25** both became **0**. That fits a value overflowing every 8 depth units before being clamped.
+
+A **signed 27-bit intermediate** would explain it. The depth buffer stores 24 bits, so 1 unit on our normalized scale corresponds to <Math tex={String.raw`2^{24}`} /> raw units. With 27 bits, the calculation would roll over after <Math tex={String.raw`2^{27}`} /> raw units, or:
+
+<Math block tex={String.raw`\frac{2^{27}}{2^{24}} = 8 \text{ depth units}`} />
+
+Because it's signed, that range runs from **-4 to just below +4**. Going past +4 starts again at -4, making 4.25 become -3.75. Clamping then turns it into 0. At 8.25, a complete cycle has passed and we're back at 0.25.
+
+<ZFreezeOverflow />
+
+<aside aria-labelledby="z-freeze-stripes-fun-fact" className="my-8 border border-border bg-muted/40 px-5 py-4 [&>p]:my-0">
+  <strong id="z-freeze-stripes-fun-fact" className="mb-2 block text-base">Fun fact</strong>
+
+Hazel also tried wrapping depth with `% 1.0` and got narrow stripes instead of the broad bands seen on hardware! With this test's slope, that makes depth repeat every 16 pixels, so blue keeps alternating between passing and failing the depth test against red.
+
+</aside>
+
+That's enough to fix this case, but it doesn't prove the hardware uses a signed 27-bit value internally. Some of the exact depth readings still differ. The earlier Mario Golf example stays within the normal depth range, so its explanation doesn't change.
+
 ## Implementing it
 
-Homebrew using [libogc](https://github.com/devkitPro/libogc) enables the feature with `GX_SetCoPlanar(GX_ENABLE)`. You can try the red and blue example yourself by building the [standalone test](https://github.com/ioncodes/gamecube-wii-tests/tree/master/z-freeze) with `make z-freeze` and running `build/z-freeze.dol`.
+Homebrew using [libogc](https://github.com/devkitPro/libogc) enables the feature with `GX_SetCoPlanar(GX_ENABLE)`. You can try the red and blue example yourself by checking out the revision of the [original 2-panel test](https://github.com/ioncodes/gamecube-wii-tests/tree/be7a2e6f79d9691b9dd2c3308bf56dcf466e703b/z-freeze), building it with `make z-freeze` and running `build/z-freeze.dol`.
 
-Gecko's [plane calculation](https://github.com/ioncodes/gecko/blob/07a030f8d1aae494cac0e061c135ed0c75b45ff9/crates/gecko/src/flipper/gx/depth.rs) and [depth shader](https://github.com/ioncodes/gecko/blob/07a030f8d1aae494cac0e061c135ed0c75b45ff9/crates/backend-wgpu/src/shaders/main.wesl) contain the implementation. I've also written about the triangle stretching out of Luigi's hand in the [vertex-skip post](/posts/vertex-skip/).
+Gecko's [plane calculation](https://github.com/ioncodes/gecko/blob/07a030f8d1aae494cac0e061c135ed0c75b45ff9/crates/gecko/src/flipper/gx/depth.rs) and [depth shader with overflow handling](https://github.com/ioncodes/gecko/blob/88a8a110219d4152739427c216b3ae824b094a8c/crates/backend-wgpu/src/shaders/main.wesl) contain the implementation. I've also written about the triangle stretching out of Luigi's hand in the [vertex-skip post](/posts/vertex-skip/).
 
 All that trouble over a triangle that doesn't draw any pixels :^)
 
 ## Thank you
 
 A big thank you to Zayd for taking the time to proofread this post. He's the creator of [beanwii](https://github.com/zaydlang/beanwii) and also makes some really cool videos about emulation on [his YouTube channel](https://www.youtube.com/@beanulation1). If you enjoyed this post, go check them out!
+
+Thanks also to hazelwiss for testing this on real hardware and comparing the results with the emulators. Those tests caught the overflow behavior that the first implementation missed and gave us actual depth readings to work from.
