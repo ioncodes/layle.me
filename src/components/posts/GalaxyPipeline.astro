@@ -2,7 +2,7 @@
 import '../../styles/galaxy-wpar-demos.css';
 const steps=['Stage 1','Stage 2','Keep 8 bits','Alpha test'];
 ---
-<gx-galaxy-pipeline class="gx-demo galaxy-wpar-demo not-prose">
+<gx-galaxy-pipeline class="gx-demo galaxy-wpar-demo not-prose" data-passes="true">
   <fieldset disabled>
     <div class="pipe-steps" aria-label="Follow the eye alpha through the pipeline">
       {steps.map((label,i)=><button type="button" data-step={i} aria-pressed={i===3}><span>{label}</span><strong data-value={i}>{['255','447','191','PASS'][i]}</strong></button>)}
@@ -42,7 +42,7 @@ const steps=['Stage 1','Stage 2','Keep 8 bits','Alpha test'];
   .pipe-steps span{font-size:.75rem;display:block;}
   .pipe-steps strong{font:600 1.7rem ui-monospace,monospace;display:block;margin-top:.4rem;}
   [data-passes="false"] [data-value="3"]{color:var(--gx-red-text);}
-  [data-passes="true"] [data-value="3"]{color:var(--gx-blue-text);}
+  [data-passes="true"] [data-value="3"]{color:var(--gx-green-text);}
   .pipe-toggle{margin-top:1rem;}
   .pipe-focus{display:grid;grid-template-columns:80px minmax(0,1fr);gap:1.25rem;align-items:center;padding:1.5rem 0 1rem;}
   .pipe-focus img{width:80px;height:80px;image-rendering:pixelated;margin:0;}

@@ -132,6 +132,29 @@
     word-break: break-word;
   }
 
+  .prose :is(h1, h2, h3, h4, h5, h6)[id] {
+    scroll-margin-top: 6rem;
+  }
+
+  .prose a.heading-anchor {
+    margin-inline-start: 0.35em;
+    color: inherit;
+    font-weight: normal;
+    text-decoration: none;
+    opacity: 0.35;
+  }
+
+  .prose :is(h1, h2, h3, h4, h5, h6):hover .heading-anchor,
+  .prose a.heading-anchor:focus-visible {
+    color: var(--primary);
+    opacity: 1;
+  }
+
+  .prose a.heading-anchor:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 3px;
+  }
+
   .astro-code {
     background-color: var(--muted) !important;
   }

@@ -7,6 +7,7 @@
   --gx-green: #55966d;
   --gx-blue-text: #315b98;
   --gx-red-text: #a74653;
+  --gx-green-text: #34724b;
   --gx-gold-text: #805c1f;
   --gx-cell-blue: color-mix(in srgb, var(--gx-blue) 45%, var(--background));
   --gx-cell-red: color-mix(in srgb, var(--gx-red) 45%, var(--background));
@@ -18,6 +19,7 @@
   --gx-gold: #c6a05d;
   --gx-blue-text: #9cbce6;
   --gx-red-text: #e7a0a9;
+  --gx-green-text: #91d5a7;
   --gx-gold-text: #dabb7e;
 }
 
