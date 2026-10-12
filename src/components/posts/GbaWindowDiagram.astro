@@ -1,0 +1,106 @@
+---
+import '../../styles/gx-demos.css';
+
+interface Props {
+  x1: number;
+  x2: number;
+  y1: number;
+  y2: number;
+  caption?: string;
+}
+const { x1, x2, y1, y2, caption } = Astro.props;
+// Screen pixels are drawn at 2 units each, with room around the screen for the labels.
+const s = 2,
+  left = 92,
+  top = 44,
+  width = 240 * s,
+  height = 160 * s;
+const X = (x: number) => left + x * s,
+  Y = (y: number) => top + y * s;
+---
+
+<figure class="gx-demo gx-window-diagram not-prose">
+  <svg
+    viewBox={`0 0 ${left + width + 24} ${top + height + 34}`}
+    role="img"
+    aria-label={`A window from x ${x1} to ${x2 - 1} and y ${y1} to ${y2 - 1} on the 240 × 160 screen. X1 and Y1 are its first column and row, X2 and Y2 the first ones past it.`}
+  >
+    <rect class="screen" x={X(0)} y={Y(0)} width={width} height={height}></rect>
+    <rect class="window" x={X(x1)} y={Y(y1)} width={(x2 - x1) * s} height={(y2 - y1) * s}></rect>
+
+    <line class="guide first" x1={X(x1)} y1={top - 10} x2={X(x1)} y2={Y(y2)}></line>
+    <line class="guide last" x1={X(x2)} y1={top - 10} x2={X(x2)} y2={Y(y2)}></line>
+    <line class="guide first" x1={left - 10} y1={Y(y1)} x2={X(x2)} y2={Y(y1)}></line>
+    <line class="guide last" x1={left - 10} y1={Y(y2)} x2={X(x2)} y2={Y(y2)}></line>
+
+    <text class="label first" x={X(x1)} y={top - 16} text-anchor="middle">X1 = {x1}</text>
+    <text class="label last" x={X(x2)} y={top - 16} text-anchor="middle">X2 = {x2}</text>
+    <text class="label first" x={left - 14} y={Y(y1) + 5} text-anchor="end">Y1 = {y1}</text>
+    <text class="label last" x={left - 14} y={Y(y2) + 5} text-anchor="end">Y2 = {y2}</text>
+
+    <text class="tick" x={X(0)} y={Y(160) + 22} text-anchor="start">0</text>
+    <text class="tick" x={X(240)} y={Y(160) + 22} text-anchor="end">240</text>
+    <text class="tick" x={X(0) - 8} y={Y(160)} text-anchor="end">160</text>
+  </svg>
+  {caption && <figcaption>{caption}</figcaption>}
+</figure>
+<style>
+  .gx-window-diagram svg {
+    display: block;
+    width: 100%;
+    max-width: 36rem;
+    height: auto;
+    margin-inline: auto;
+    font-family: ui-monospace, monospace;
+  }
+
+  .screen {
+    fill: var(--muted);
+    stroke: var(--border);
+    stroke-width: 1.5;
+  }
+
+  .window {
+    fill: color-mix(in srgb, var(--gx-gold) 30%, transparent);
+    stroke: var(--gx-gold);
+    stroke-width: 2;
+  }
+
+  .guide {
+    stroke-width: 1.5;
+    stroke-dasharray: 4 4;
+  }
+
+  .guide.first {
+    stroke: var(--gx-blue);
+  }
+
+  .guide.last {
+    stroke: var(--gx-red);
+  }
+
+  .label {
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .label.first {
+    fill: var(--gx-blue-text);
+  }
+
+  .label.last {
+    fill: var(--gx-red-text);
+  }
+
+  .tick {
+    font-size: 13px;
+    fill: var(--muted-foreground);
+  }
+
+  .gx-window-diagram figcaption {
+    margin-top: 0.75rem;
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--muted-foreground);
+  }
+</style>

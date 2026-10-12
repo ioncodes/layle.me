@@ -1,6 +1,6 @@
 import * as Plot from '@observablehq/plot';
 
-const blue = '#2864dc', red = '#e64c43';
+const blue = 'var(--gx-blue)', red = 'var(--gx-red)';
 type RenderOptions = { width?: number; document?: Document };
 type FreezeOptions = RenderOptions & { frozen?: boolean; sloped?: boolean };
 export type StripMode = 'skip' | 'restart' | 'fetch';
@@ -29,7 +29,7 @@ export function depthPlot({ frozen = true, sloped = false, width = 350, document
     y: { domain: [0, 1], reverse: true, ticks: [0, 0.5, 1], grid: true, label: 'depth (near → far)', labelArrow: false },
     marks: [
       Plot.line(stored, { stroke: 'var(--gx-red)', strokeWidth: 3 }),
-      Plot.line(reference, { stroke: 'var(--gx-gold)', strokeWidth: 6, strokeDasharray: '4 5', opacity: frozen ? 1 : 0.3 }),
+      Plot.line(reference, { stroke: 'var(--gx-gold-text)', strokeWidth: 6, strokeDasharray: '4 5', opacity: frozen ? 1 : 0.3 }),
       Plot.line(frozen ? reference : [[0, 0.25], [1, 0.25]], { stroke: 'var(--gx-blue)', strokeWidth: 3 }),
     ],
   });
@@ -88,7 +88,7 @@ export function stripPlot(mode: StripMode = 'skip', location: MarkerLocation = '
     x: { domain: [-100, 310], axis: null }, y: { domain: [-90, 205], reverse: true, axis: null },
     marks: [
       ...triangles.map(t => Plot.line(t.map(i => positions[i]), {
-        x: 'x', y: 'y', curve: 'linear-closed', fill: t.includes(4) ? '#bf3932' : blue,
+        x: 'x', y: 'y', curve: 'linear-closed', fill: t.includes(4) ? red : blue,
         stroke: 'white', strokeWidth: 1.5,
       })),
       mode === 'restart' && location === 'middle' ? Plot.rect([{ x1: 0, x2: 140, y1: 0, y2: 180 }], {

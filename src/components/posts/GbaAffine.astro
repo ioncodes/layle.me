@@ -1,0 +1,404 @@
+---
+import '../../styles/gx-demos.css';
+---
+
+<gx-gba-affine class="gx-demo not-prose">
+  <div class="affine-panels">
+    <figure class="affine-screen">
+      <img
+        data-fallback
+        src="/images/gba-bitmap/wario-land-4-vortex.png"
+        width="240"
+        height="160"
+        alt="Wario Land 4's vortex: a spiral background, rotated and magnified, with Wario spinning in front of it."
+        loading="lazy"
+      />
+      <canvas
+        data-screen
+        width="240"
+        height="160"
+        tabindex="0"
+        role="img"
+        aria-label="BG2 on the screen. Click a pixel or use the arrow keys to see which texel it shows."
+        hidden></canvas>
+      <span class="affine-cursor" data-cursor hidden aria-hidden="true"></span>
+      <figcaption>Screen</figcaption>
+    </figure>
+    <figure class="affine-map">
+      <svg data-map role="img" aria-label="BG2's 256 × 256 map, with the part the screen shows outlined." hidden>
+        <defs>
+          <pattern data-pattern patternUnits="userSpaceOnUse" width="256" height="256">
+            <image data-tile width="256" height="256" preserveAspectRatio="none"></image>
+          </pattern>
+        </defs>
+        <rect data-fill class="affine-fill"></rect>
+        <image data-image width="256" height="256" preserveAspectRatio="none"></image>
+        <rect data-edge class="affine-edge" x="0" y="0" width="256" height="256"></rect>
+        <polygon data-footprint class="affine-footprint"></polygon>
+        <circle data-origin class="affine-origin" r="3"></circle>
+        <circle data-texel class="affine-texel" r="3"></circle>
+      </svg>
+      <figcaption>BG2's map, 256 × 256</figcaption>
+    </figure>
+  </div>
+  <fieldset disabled class="affine-controls">
+    <label>
+      Rotation: <output data-angle-value>0</output>°
+      <input data-angle type="range" min="-180" max="180" step="1" value="0" aria-label="Rotation in degrees" />
+    </label>
+    <label>
+      Magnification: <output data-scale-value>1</output>×
+      <input data-scale type="range" min="-2" max="2" step="0.05" value="0" aria-label="Magnification" />
+    </label>
+    <label class="affine-check">
+      <input type="checkbox" data-wrap /> Wraparound</label
+    >
+    <button type="button" data-reset disabled>Restore the game's values</button>
+  </fieldset>
+  <div class="affine-readout" data-readout aria-live="polite"></div>
+</gx-gba-affine>
+
+<script>
+  import { WIDTH, HEIGHT, canvasPoint, arrowMoves } from './gba-bitmap';
+  import { loadCapture, type Capture } from './gba-video';
+  import {
+    affineBackground,
+    affineImage,
+    renderAffine,
+    rotationMatrix,
+    decompose,
+    centeredOrigin,
+    fixed8,
+    halfword,
+    word28,
+    type Matrix,
+  } from './gba-affine';
+
+  class GbaAffine extends HTMLElement {
+    async connectedCallback() {
+      let capture: Capture;
+
+      try {
+        capture = await loadCapture('wario-land-4-vortex');
+      } catch {
+        return;
+      }
+
+      if (!this.isConnected || !capture.lines) return;
+
+      const bg = affineBackground(capture, 2);
+      const game = capture.lines[0].bg[0];
+      const gameMatrix: Matrix = { pa: game.pa, pb: game.pb, pc: game.pc, pd: game.pd };
+      const gameOrigin = { x: game.x, y: game.y };
+      const start = decompose(gameMatrix);
+
+      const canvas = this.querySelector<HTMLCanvasElement>('[data-screen]')!;
+      const svg = this.querySelector<SVGSVGElement>('[data-map]')!;
+      const angleInput = this.querySelector<HTMLInputElement>('[data-angle]')!;
+      const scaleInput = this.querySelector<HTMLInputElement>('[data-scale]')!;
+      const wrapInput = this.querySelector<HTMLInputElement>('[data-wrap]')!;
+      const reset = this.querySelector<HTMLButtonElement>('[data-reset]')!;
+      const cursor = this.querySelector<HTMLElement>('[data-cursor]')!;
+
+      // The map as an image, shared by the single copy and the repeating pattern for wraparound.
+      const mapCanvas = document.createElement('canvas');
+      mapCanvas.width = mapCanvas.height = bg.size;
+      mapCanvas.getContext('2d')!.putImageData(affineImage(capture, bg), 0, 0);
+      const url = mapCanvas.toDataURL();
+      for (const image of svg.querySelectorAll('image')) image.setAttribute('href', url);
+
+      let matrix = gameMatrix;
+      let origin = gameOrigin;
+      let point = { x: WIDTH / 2, y: HEIGHT / 2 };
+
+      const texel = (x: number, y: number) => ({
+        x: (origin.x + matrix.pa * x + matrix.pb * y) / 256,
+        y: (origin.y + matrix.pc * x + matrix.pd * y) / 256,
+      });
+
+      const setSliders = (degrees: number, scale: number) => {
+        angleInput.value = String(Math.round(degrees));
+        scaleInput.value = String(Math.log2(scale));
+      };
+
+      const draw = () => {
+        const wrap = wrapInput.checked;
+        canvas.getContext('2d')!.putImageData(renderAffine(capture, bg, matrix, origin, wrap), 0, 0);
+
+        const { degrees, scale } = decompose(matrix);
+        this.querySelector('[data-angle-value]')!.textContent = String(Math.round(degrees)).replace('-', '−');
+        this.querySelector('[data-scale-value]')!.textContent = scale.toFixed(2);
+        reset.disabled =
+          matrix === gameMatrix && wrap === bg.wrap;
+
+        // Outline the screen's corners in the map, and fit the view around it and the map.
+        const corners = [texel(0, 0), texel(WIDTH, 0), texel(WIDTH, HEIGHT), texel(0, HEIGHT)];
+        const xs = [0, bg.size, ...corners.map(c => c.x)];
+        const ys = [0, bg.size, ...corners.map(c => c.y)];
+        const pad = 8;
+        const minX = Math.min(...xs) - pad;
+        const minY = Math.min(...ys) - pad;
+        const size = Math.max(Math.max(...xs) - minX, Math.max(...ys) - minY) + pad;
+        svg.setAttribute('viewBox', `${minX} ${minY} ${size} ${size}`);
+        const unit = size / 256;
+        svg.style.setProperty('--unit', String(unit));
+
+        const fill = svg.querySelector('[data-fill]')!;
+        fill.setAttribute('x', String(minX));
+        fill.setAttribute('y', String(minY));
+        fill.setAttribute('width', String(size));
+        fill.setAttribute('height', String(size));
+        fill.setAttribute('fill', wrap ? `url(#${this.patternId})` : 'none');
+        svg.querySelector<SVGElement>('[data-image]')!.style.display = wrap ? 'none' : '';
+
+        svg
+          .querySelector('[data-footprint]')!
+          .setAttribute('points', corners.map(c => `${c.x},${c.y}`).join(' '));
+        const o = texel(0, 0);
+        const t = texel(point.x, point.y);
+        for (const [name, c] of [
+          ['[data-origin]', o],
+          ['[data-texel]', t],
+        ] as const) {
+          const circle = svg.querySelector(name)!;
+          circle.setAttribute('cx', String(c.x));
+          circle.setAttribute('cy', String(c.y));
+          circle.setAttribute('r', String(3 * unit));
+        }
+
+        cursor.hidden = false;
+        cursor.style.left = `${((point.x + 0.5) / WIDTH) * 100}%`;
+        cursor.style.top = `${((point.y + 0.5) / HEIGHT) * 100}%`;
+
+        const p = texel(point.x, point.y);
+        const tx = Math.floor(p.x);
+        const ty = Math.floor(p.y);
+        const inside = wrap || (tx >= 0 && ty >= 0 && tx < bg.size && ty < bg.size);
+        const where = inside
+          ? `texel (${tx & (bg.size - 1)}, ${ty & (bg.size - 1)})`
+          : 'outside the map, so it stays transparent';
+        this.querySelector('[data-readout]')!.innerHTML = `
+          <table>
+            <thead><tr><th>Register</th><th>Value</th><th>Written as</th></tr></thead>
+            <tbody>
+              ${(['pa', 'pb', 'pc', 'pd'] as const)
+                .map(
+                  k =>
+                    `<tr><th>BG2${k.toUpperCase()}</th><td>${fixed8(matrix[k])}</td><td>${halfword(matrix[k])}</td></tr>`,
+                )
+                .join('')}
+              <tr><th>BG2X</th><td>${fixed8(origin.x)}</td><td>${word28(origin.x)}</td></tr>
+              <tr><th>BG2Y</th><td>${fixed8(origin.y)}</td><td>${word28(origin.y)}</td></tr>
+            </tbody>
+          </table>
+          <p>Screen pixel (${point.x}, ${point.y}) shows ${where}.</p>`;
+      };
+
+      const fromSliders = () => {
+        const scale = 2 ** Number(scaleInput.value);
+        matrix = rotationMatrix(Number(angleInput.value), scale);
+        // Keep the spiral's center in the middle of the screen, like the game does.
+        origin = centeredOrigin(matrix, bg.size / 2, bg.size / 2);
+        draw();
+      };
+
+      angleInput.oninput = scaleInput.oninput = fromSliders;
+      wrapInput.onchange = draw;
+      reset.onclick = () => {
+        matrix = gameMatrix;
+        origin = gameOrigin;
+        wrapInput.checked = bg.wrap;
+        setSliders(start.degrees, start.scale);
+        draw();
+      };
+
+      const move = (x: number, y: number) => {
+        point = { x: Math.max(0, Math.min(WIDTH - 1, x)), y: Math.max(0, Math.min(HEIGHT - 1, y)) };
+        draw();
+      };
+      canvas.onclick = event => {
+        const p = canvasPoint(canvas, event);
+        move(p.x, p.y);
+      };
+      canvas.onkeydown = event => {
+        const step = arrowMoves[event.key];
+        if (!step) return;
+        event.preventDefault();
+        move(point.x + step[0], point.y + step[1]);
+      };
+
+      // Pattern ids must be unique on the page.
+      this.patternId = `affine-wrap-${Math.random().toString(36).slice(2)}`;
+      svg.querySelector('[data-pattern]')!.id = this.patternId;
+
+      wrapInput.checked = bg.wrap;
+      setSliders(start.degrees, start.scale);
+      canvas.hidden = false;
+      svg.removeAttribute('hidden');
+      this.querySelector<HTMLElement>('[data-fallback]')!.hidden = true;
+      this.querySelector('fieldset')!.disabled = false;
+      draw();
+    }
+
+    patternId = '';
+  }
+
+  if (!customElements.get('gx-gba-affine')) customElements.define('gx-gba-affine', GbaAffine);
+</script>
+
+<style>
+  .affine-panels {
+    display: grid;
+    grid-template-columns: 3fr 2fr;
+    gap: 1rem;
+    align-items: start;
+  }
+
+  .affine-panels figure {
+    position: relative;
+    margin: 0;
+  }
+
+  .affine-panels figcaption {
+    margin-top: 0.4rem;
+    font-size: 0.8rem;
+    text-align: center;
+    color: var(--muted-foreground);
+  }
+
+  .affine-screen :is(img, canvas) {
+    display: block;
+    width: 100%;
+    height: auto;
+    image-rendering: pixelated;
+    background: #111;
+    cursor: crosshair;
+  }
+
+  .affine-screen canvas:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 3px;
+  }
+
+  .affine-panels [hidden] {
+    display: none !important;
+  }
+
+  .affine-map svg {
+    display: block;
+    width: 100%;
+    aspect-ratio: 1;
+    background: var(--muted);
+    image-rendering: pixelated;
+  }
+
+  .affine-map image {
+    image-rendering: pixelated;
+  }
+
+  .affine-edge {
+    fill: none;
+    stroke: var(--muted-foreground);
+    stroke-width: calc(1px * var(--unit, 1));
+    stroke-dasharray: calc(4px * var(--unit, 1));
+  }
+
+  .affine-footprint {
+    fill: rgb(255 220 112 / 0.12);
+    stroke: #ffdc70;
+    stroke-width: calc(2px * var(--unit, 1));
+    stroke-linejoin: round;
+    paint-order: stroke;
+  }
+
+  .affine-origin {
+    fill: #ffdc70;
+    stroke: #111;
+    stroke-width: calc(1px * var(--unit, 1));
+  }
+
+  .affine-texel {
+    fill: none;
+    stroke: #fff;
+    stroke-width: calc(2px * var(--unit, 1));
+  }
+
+  .affine-cursor {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 1px #111;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+
+  .affine-controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem 1.5rem;
+    align-items: end;
+    margin-top: 1rem !important;
+  }
+
+  .affine-check {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .affine-controls button {
+    justify-self: start;
+  }
+
+  .affine-controls button:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  .affine-readout {
+    margin-top: 1rem;
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .affine-readout :global(table) {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .affine-readout :global(th),
+  .affine-readout :global(td) {
+    padding: 0.3rem 0.5rem 0.3rem 0;
+    text-align: left;
+    border-top: 1px solid var(--border);
+    font-weight: 400;
+  }
+
+  .affine-readout :global(thead th) {
+    border-top: 0;
+    color: var(--muted-foreground);
+    font-size: 0.8rem;
+  }
+
+  .affine-readout :global(tbody th) {
+    color: var(--muted-foreground);
+  }
+
+  .affine-readout :global(td:last-child) {
+    font-family: ui-monospace, monospace;
+    font-size: 0.8rem;
+  }
+
+  .affine-readout :global(p) {
+    margin: 0.75rem 0 0 !important;
+  }
+
+  @media (max-width: 560px) {
+    .affine-panels,
+    .affine-controls {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

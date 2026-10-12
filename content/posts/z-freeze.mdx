@@ -17,6 +17,7 @@ import DepthPlaneDerivation from '../../src/components/posts/DepthPlaneDerivatio
 import ZFreezeOverflow from '../../src/components/posts/ZFreezeOverflow.astro';
 import Math from '../../src/components/Math.astro';
 import ImagePreview from '../../src/components/ImagePreview';
+import FunFact from '../../src/components/posts/FunFact.astro';
 
 While working on [Gecko](https://github.com/ioncodes/gecko), my GameCube and Wii emulator, I noticed that the upper parts of the player selection signs were missing in *Mario Golf: Toadstool Tour*. Everything below them looked fine.
 
@@ -111,9 +112,9 @@ The signs take the role of our red rectangle and the sky takes the role of blue,
 With z-freeze, the saved depth puts the sky behind the signs, so the sky fails the depth test where they overlap. It still passes against the cleared background and fills the space around them.
 
 <details className="my-8 border border-border bg-muted/40 px-5 py-4 [&>p:last-child]:mb-0">
-  <summary className="cursor-pointer text-base font-semibold">Depth values from the capture</summary>
+  <summary className="cursor-pointer text-base font-semibold">Depth values</summary>
 
-In this capture, the saved plane was approximately:
+The saved plane was approximately:
 
 <Math block tex={String.raw`Z_{24} = 2.650141y + \text{16'755'356}`} />
 
@@ -178,12 +179,11 @@ Because it's signed, that range runs from **-4 to just below +4**. Going past +4
 
 <ZFreezeOverflow />
 
-<aside aria-labelledby="z-freeze-stripes-fun-fact" className="my-8 border border-border bg-muted/40 px-5 py-4 [&>p]:my-0">
-  <strong id="z-freeze-stripes-fun-fact" className="mb-2 block text-base">Fun fact</strong>
+<FunFact>
 
 Hazel also tried wrapping depth with `% 1.0` and got narrow stripes instead of the broad bands seen on hardware! With this test's slope, that makes depth repeat every 16 pixels, so blue keeps alternating between passing and failing the depth test against red.
 
-</aside>
+</FunFact>
 
 That's enough to fix this case, but it doesn't prove the hardware uses a signed 27-bit value internally. Some of the exact depth readings still differ. The earlier Mario Golf example stays within the normal depth range, so its explanation doesn't change.
 

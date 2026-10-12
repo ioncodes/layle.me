@@ -1,0 +1,170 @@
+---
+import '../../styles/gx-demos.css';
+---
+
+<gx-gba-mosaic class="gx-demo not-prose">
+  <div class="mosaic-stage">
+    <img
+      data-fallback
+      src="/images/gba-bitmap/mario-world.png"
+      width="240"
+      height="160"
+      alt="The Super Mario World map of Yoshi's Island, with Mario standing next to a level."
+      loading="lazy"
+    />
+    <canvas
+      data-frame
+      width="240"
+      height="160"
+      role="img"
+      aria-label="The map with the selected mosaic size."
+      hidden></canvas>
+  </div>
+  <fieldset disabled class="mosaic-controls">
+    <label>
+      Block width: <output data-width-value>4</output> pixels
+      <input data-width type="range" min="1" max="16" value="4" aria-label="Mosaic block width" />
+    </label>
+    <label>
+      Block height: <output data-height-value>4</output> pixels
+      <input data-height type="range" min="1" max="16" value="4" aria-label="Mosaic block height" />
+    </label>
+    <label class="mosaic-sprites">
+      <input type="checkbox" data-sprites checked /> Use the same size for sprites</label
+    >
+    <p class="mosaic-register" data-register>–</p>
+  </fieldset>
+</gx-gba-mosaic>
+
+<script>
+  import { WIDTH, HEIGHT, hex, channels, expand } from './gba-bitmap';
+  import { loadCapture, background, layer, spriteLayer, type Capture } from './gba-video';
+
+  class GbaMosaic extends HTMLElement {
+    async connectedCallback() {
+      let capture: Capture;
+
+      try {
+        capture = await loadCapture('mario-world');
+      } catch {
+        return;
+      }
+
+      if (!this.isConnected || !capture.effects) return;
+
+      const canvas = this.querySelector<HTMLCanvasElement>('[data-frame]')!;
+      const widthInput = this.querySelector<HTMLInputElement>('[data-width]')!;
+      const heightInput = this.querySelector<HTMLInputElement>('[data-height]')!;
+      const sprites = this.querySelector<HTMLInputElement>('[data-sprites]')!;
+      const { bldcnt, bldy } = capture.effects;
+
+      // The backgrounds are drawn once without mosaic. Mosaic then only changes which pixel each block copies.
+      const bgs = [0, 1, 2, 3]
+        .filter(i => capture.dispcnt & (0x100 << i))
+        .map(i => background(capture, i))
+        .sort((a, b) => a.priority - b.priority || a.index - b.index);
+      const pixels = bgs.map(bg => layer(capture, bg));
+      const mosaicBit = bgs.map(bg => Boolean(capture.bg[bg.index].cnt & 0x40));
+
+      const backdrop = (() => {
+        // This frame darkens the backdrop with BLDCNT and BLDY, which the demo keeps.
+        let c = channels(capture.palette[0]);
+        const evy = Math.min(16, bldy & 31);
+        const effect = (bldcnt >> 6) & 3;
+        if ((bldcnt >> 5) & 1 && effect >= 2)
+          c = c.map(v => (effect === 2 ? v + (((31 - v) * evy) >> 4) : v - ((v * evy) >> 4)));
+        return c.map(expand);
+      })();
+
+      const update = () => {
+        const w = Number(widthInput.value);
+        const h = Number(heightInput.value);
+        const obj = sprites.checked ? { width: w, height: h } : { width: 1, height: 1 };
+        const spr = spriteLayer(capture, obj);
+        const image = new ImageData(WIDTH, HEIGHT);
+        for (let y = 0; y < HEIGHT; y++)
+          for (let x = 0; x < WIDTH; x++) {
+            const i = y * WIDTH + x;
+            const block = (y - (y % h)) * WIDTH + (x - (x % w));
+            let index = -1;
+            let priority = 4;
+
+            for (let n = 0; n < bgs.length; n++) {
+              const p = pixels[n][mosaicBit[n] ? block : i];
+
+              if (p >= 0) {
+                index = p;
+                priority = bgs[n].priority;
+                break;
+              }
+            }
+
+            if (capture.dispcnt & 0x1000 && spr.index[i] >= 0 && spr.priority[i] <= priority)
+              index = spr.index[i];
+            image.data.set(
+              index < 0 ? [...backdrop, 255] : [...channels(capture.palette[index]).map(expand), 255],
+              i * 4,
+            );
+          }
+        canvas.getContext('2d')!.putImageData(image, 0, 0);
+        this.querySelector('[data-width-value]')!.textContent = String(w);
+        this.querySelector('[data-height-value]')!.textContent = String(h);
+        const value = (w - 1) | ((h - 1) << 4) | ((obj.width - 1) << 8) | ((obj.height - 1) << 12);
+        this.querySelector('[data-register]')!.innerHTML = `<code>MOSAIC = ${hex(value, 4)}</code>`;
+      };
+
+      widthInput.oninput = heightInput.oninput = sprites.onchange = update;
+      canvas.hidden = false;
+      this.querySelector<HTMLElement>('[data-fallback]')!.hidden = true;
+      this.querySelector('fieldset')!.disabled = false;
+      update();
+    }
+  }
+
+  if (!customElements.get('gx-gba-mosaic')) customElements.define('gx-gba-mosaic', GbaMosaic);
+</script>
+
+<style>
+  .mosaic-stage {
+    background: #111;
+  }
+
+  .mosaic-stage :is(img, canvas) {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin: 0;
+    image-rendering: pixelated;
+  }
+
+  .mosaic-stage [hidden] {
+    display: none;
+  }
+
+  .mosaic-controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 1.5rem;
+    margin-top: 1rem !important;
+  }
+
+  .mosaic-sprites {
+    grid-column: 1 / -1;
+  }
+
+  .mosaic-register {
+    grid-column: 1 / -1;
+    margin: 0.75rem 0 0 !important;
+  }
+
+  .mosaic-register :global(code) {
+    font-size: 0.8rem;
+    color: var(--muted-foreground);
+  }
+
+  @media (max-width: 560px) {
+    .mosaic-controls {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

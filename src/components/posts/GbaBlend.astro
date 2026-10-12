@@ -1,0 +1,310 @@
+---
+import '../../styles/gx-demos.css';
+import 'katex/dist/katex.min.css';
+---
+
+<gx-gba-blend class="gx-demo not-prose">
+  <div class="blend-stage">
+    <img
+      data-fallback
+      src="/images/gba-bitmap/golden-sun.png"
+      width="240"
+      height="160"
+      alt="Golden Sun: a lamp's glow and light from the windows brightening a room at night."
+      loading="lazy"
+    />
+    <canvas
+      data-frame
+      width="240"
+      height="160"
+      tabindex="0"
+      role="img"
+      aria-label="The blended frame. Click a pixel or use the arrow keys to see how its color is calculated."
+      hidden></canvas>
+    <span class="blend-cursor" data-cursor hidden aria-hidden="true"></span>
+  </div>
+  <fieldset disabled class="blend-controls">
+    <label>
+      EVA, the weight of BG1: <output data-eva-value>6</output>/16
+      <input data-eva type="range" min="0" max="16" value="6" aria-label="EVA" />
+    </label>
+    <label>
+      EVB, the weight of the layer below: <output data-evb-value>16</output>/16
+      <input data-evb type="range" min="0" max="16" value="16" aria-label="EVB" />
+    </label>
+    <button type="button" data-reset disabled>Restore the game's 6 and 16</button>
+  </fieldset>
+  <div class="blend-math" data-math aria-live="polite"></div>
+</gx-gba-blend>
+
+<script>
+  import katex from 'katex';
+  import { WIDTH, HEIGHT, channels, expand, canvasPoint, arrowMoves } from './gba-bitmap';
+  import { loadCapture, background, layer, spriteLayer, type Capture } from './gba-video';
+
+  const NAMES = ['BG0', 'BG1', 'BG2', 'BG3', 'the sprite', 'the backdrop'];
+
+  class GbaBlend extends HTMLElement {
+    async connectedCallback() {
+      let capture: Capture;
+
+      try {
+        capture = await loadCapture('golden-sun');
+      } catch {
+        return;
+      }
+
+      if (!this.isConnected || !capture.effects) return;
+
+      const canvas = this.querySelector<HTMLCanvasElement>('[data-frame]')!;
+      const evaInput = this.querySelector<HTMLInputElement>('[data-eva]')!;
+      const evbInput = this.querySelector<HTMLInputElement>('[data-evb]')!;
+      const reset = this.querySelector<HTMLButtonElement>('[data-reset]')!;
+      const bldcnt = capture.effects.bldcnt;
+      const bgs = [0, 1, 2, 3]
+        .filter(i => capture.dispcnt & (0x100 << i))
+        .map(i => background(capture, i))
+        .sort((a, b) => a.priority - b.priority || a.index - b.index);
+      const pixels = bgs.map(bg => layer(capture, bg));
+      const sprites = spriteLayer(capture);
+      let point = { x: 225, y: 82 };
+
+      // The 2 frontmost layers at a pixel, as [layer, palette index]. Layer 4 is sprites, 5 the backdrop.
+      const stack = (i: number) => {
+        const found: [number, number][] = [];
+        let sprite = capture.dispcnt & 0x1000 && sprites.index[i] >= 0;
+
+        bgs.forEach((bg, n) => {
+          if (pixels[n][i] < 0) return;
+
+          if (sprite && sprites.priority[i] <= bg.priority) {
+            found.push([4, sprites.index[i]]);
+            sprite = false;
+          }
+
+          found.push([bg.index, pixels[n][i]]);
+        });
+
+        if (sprite) found.push([4, sprites.index[i]]);
+        found.push([5, 0]);
+
+        // Where only the backdrop is left, there's nothing behind it to blend with.
+        return [found[0], found[1] ?? null] as const;
+      };
+
+      const first = (l: number) => (bldcnt >> l) & 1;
+      const second = (l: number) => (bldcnt >> (8 + l)) & 1;
+      const blend = (top: number[], below: number[], eva: number, evb: number) =>
+        top.map((c, n) => Math.min(31, (c * eva + below[n] * evb) >> 4));
+
+      const update = () => {
+        const eva = Number(evaInput.value);
+        const evb = Number(evbInput.value);
+        const image = new ImageData(WIDTH, HEIGHT);
+
+        for (let i = 0; i < WIDTH * HEIGHT; i++) {
+          const [[l1, c1], below] = stack(i);
+          const top = channels(capture.palette[c1]);
+          const color =
+            ((bldcnt >> 6) & 3) === 1 && below && first(l1) && second(below[0])
+              ? blend(top, channels(capture.palette[below[1]]), eva, evb)
+              : top;
+          image.data.set([...color.map(expand), 255], i * 4);
+        }
+
+        canvas.getContext('2d')!.putImageData(image, 0, 0);
+        this.querySelector('[data-eva-value]')!.textContent = String(eva);
+        this.querySelector('[data-evb-value]')!.textContent = String(evb);
+        reset.disabled = eva === 6 && evb === 16;
+        const [[l1, c1], next] = stack(point.y * WIDTH + point.x);
+        const [l2, c2] = next ?? [-1, 0];
+        const top = channels(capture.palette[c1]);
+        const below = channels(capture.palette[c2]);
+        const head = `<p>Pixel (${point.x}, ${point.y}): ${next ? `${NAMES[l1]} on top of ${NAMES[l2]}` : 'only the backdrop'}</p>`;
+        let body: string;
+
+        if (next && first(l1) && second(l2)) {
+          const result = blend(top, below, eva, evb);
+          body =
+            '<table><thead><tr><th></th><th>' +
+            NAMES[l1] +
+            '</th><th>' +
+            NAMES[l2].replace('the ', '') +
+            '</th><th>Result</th></tr></thead><tbody>' +
+            ['Red', 'Green', 'Blue']
+              .map((name, n) => {
+                const sum = top[n] * eva + below[n] * evb;
+                const truncated = sum >> 4;
+                const equation = katex.renderToString(
+                  String.raw`\left\lfloor\dfrac{${top[n]} \times ${eva} + ${below[n]} \times ${evb}}{16}\right\rfloor = ${truncated > 31 ? truncated : String.raw`\mathbf{${result[n]}}`}`,
+                  { output: 'htmlAndMathml', strict: 'error' },
+                );
+                const cap = truncated > 31 ? `<span class="blend-cap">Capped at <b>${result[n]}</b></span>` : '';
+                return `<tr><th>${name}</th><td>${top[n]}</td><td>${below[n]}</td><td><span class="blend-equation">${equation}</span>${cap}</td></tr>`;
+              })
+              .join('') +
+            '</tbody></table>';
+        } else {
+          const reason = !next
+            ? 'There is nothing behind it'
+            : first(l1)
+              ? `${NAMES[l2][0].toUpperCase()}${NAMES[l2].slice(1)} isn't a second target`
+              : `${NAMES[l1][0].toUpperCase()}${NAMES[l1].slice(1)} isn't a first target`;
+          body = `<p class="blend-note">${reason}, so the top pixel keeps its color: red ${top[0]}, green ${top[1]}, blue ${top[2]}.</p>`;
+        }
+
+        this.querySelector('[data-math]')!.innerHTML = head + body;
+        const cursor = this.querySelector<HTMLElement>('[data-cursor]')!;
+        cursor.hidden = false;
+        cursor.style.left = `${((point.x + 0.5) / WIDTH) * 100}%`;
+        cursor.style.top = `${((point.y + 0.5) / HEIGHT) * 100}%`;
+      };
+
+      const pick = (x: number, y: number) => {
+        point = { x: Math.max(0, Math.min(WIDTH - 1, x)), y: Math.max(0, Math.min(HEIGHT - 1, y)) };
+        update();
+      };
+
+      canvas.onclick = event => {
+        const p = canvasPoint(canvas, event);
+        pick(p.x, p.y);
+      };
+
+      canvas.onkeydown = event => {
+        const m = arrowMoves[event.key];
+        if (!m) return;
+
+        event.preventDefault();
+        pick(point.x + m[0], point.y + m[1]);
+      };
+
+      evaInput.oninput = evbInput.oninput = update;
+
+      reset.onclick = () => {
+        evaInput.value = '6';
+        evbInput.value = '16';
+        update();
+      };
+
+      canvas.hidden = false;
+      this.querySelector<HTMLElement>('[data-fallback]')!.hidden = true;
+      this.querySelector('fieldset')!.disabled = false;
+      update();
+    }
+  }
+
+  if (!customElements.get('gx-gba-blend')) customElements.define('gx-gba-blend', GbaBlend);
+</script>
+
+<style>
+  .blend-stage {
+    position: relative;
+    background: #111;
+  }
+
+  .blend-stage :is(img, canvas) {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin: 0;
+    image-rendering: pixelated;
+    cursor: crosshair;
+  }
+
+  .blend-stage [hidden] {
+    display: none;
+  }
+
+  .blend-stage canvas:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 3px;
+  }
+
+  .blend-cursor {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border: 2px solid #ffdc70;
+    box-shadow: 0 0 0 1px #111;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+
+  .blend-controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 1.5rem;
+    align-items: end;
+    margin-top: 1rem !important;
+  }
+
+  .blend-controls button {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+
+  .blend-controls button:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  .blend-math {
+    margin-top: 1rem;
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .blend-math :global(p) {
+    margin: 0 0 0.5rem !important;
+  }
+
+  .blend-math :global(table) {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .blend-math :global(th),
+  .blend-math :global(td) {
+    padding: 0.65rem 0.5rem 0.65rem 0;
+    text-align: left;
+    border-top: 1px solid var(--border);
+    font-weight: 400;
+  }
+
+  .blend-math :global(thead th) {
+    border-top: 0;
+    color: var(--muted-foreground);
+    font-size: 0.8rem;
+  }
+
+  .blend-math :global(tbody th) {
+    color: var(--muted-foreground);
+  }
+
+  .blend-math :global(.katex) {
+    font-size: 1.1em;
+  }
+
+  .blend-math :global(.blend-equation) {
+    display: inline-block;
+    vertical-align: middle;
+  }
+
+  .blend-math :global(.blend-cap) {
+    display: block;
+    margin-top: 0.35rem;
+    color: var(--muted-foreground);
+    font-size: 0.8rem;
+  }
+
+  .blend-math :global(.blend-note) {
+    color: var(--muted-foreground);
+  }
+
+  @media (max-width: 560px) {
+    .blend-controls {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

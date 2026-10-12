@@ -1,0 +1,265 @@
+---
+import '../../styles/gx-demos.css';
+---
+
+<gx-gba-tile-viewer class="gx-demo not-prose">
+  <div class="tile-layout">
+    <figure>
+      <canvas
+        data-tiles
+        width="128"
+        height="128"
+        tabindex="0"
+        role="img"
+        aria-label="BG1's tiles, 16 per row. Click a tile or use the arrow keys to inspect it."></canvas>
+      <figcaption data-tiles-label>BG1's first tiles at 0x06000000</figcaption>
+    </figure>
+    <figure>
+      <div class="tile-zoom">
+        <canvas
+          data-zoom
+          width="256"
+          height="256"
+          role="img"
+          aria-label="The selected tile, enlarged, with the palette index of every pixel."></canvas>
+        <div class="tile-digits" data-digits aria-hidden="true"></div>
+      </div>
+      <figcaption data-zoom-label>Tile 0</figcaption>
+    </figure>
+    <fieldset disabled class="tile-banks">
+      <canvas
+        data-palette
+        width="256"
+        height="256"
+        tabindex="0"
+        role="img"
+        aria-label="The 16 background palette banks, 1 per row. Click a row to draw the tiles with that bank."
+      >
+      </canvas>
+      <p class="tile-caption" data-bank-label>Palette bank 0</p>
+    </fieldset>
+  </div>
+</gx-gba-tile-viewer>
+
+<script>
+  import { hex } from './gba-bitmap';
+  import { loadCapture, background, mapEntry, tilePixel, color, type Capture } from './gba-video';
+
+  const COUNT = 256;
+
+  class GbaTileViewer extends HTMLElement {
+    async connectedCallback() {
+      let capture: Capture;
+
+      try {
+        capture = await loadCapture('shaman-king');
+      } catch {
+        return;
+      }
+
+      if (!this.isConnected) return;
+
+      const bg = background(capture, 1);
+      const tiles = this.querySelector<HTMLCanvasElement>('[data-tiles]')!;
+      const zoom = this.querySelector<HTMLCanvasElement>('[data-zoom]')!;
+      const paletteCanvas = this.querySelector<HTMLCanvasElement>('[data-palette]')!;
+
+      // Remember which bank the map uses for each tile, so the defaults look right.
+      const banks = new Map<number, number>();
+      for (let y = 0; y < bg.height / 8; y++)
+        for (let x = 0; x < bg.width / 8; x++) {
+          const entry = mapEntry(capture, bg, x, y);
+          if (!banks.has(entry.tile)) banks.set(entry.tile, entry.bank);
+        }
+      let tile = [...banks.keys()].find(t => t > 0) ?? 1;
+      let bank = banks.get(tile) ?? 0;
+      const rows = Math.ceil(COUNT / 16);
+      tiles.height = rows * 8;
+      const pixel = (
+        context: CanvasRenderingContext2D,
+        x: number,
+        y: number,
+        index: number,
+        size: number,
+      ) => {
+        context.fillStyle = index
+          ? `rgb(${color(capture, bank * 16 + index).join(',')})`
+          : (x + y) % 2
+            ? '#3e3e42'
+            : '#2c2c30';
+        context.fillRect(x * size, y * size, size, size);
+      };
+
+      const update = () => {
+        const t = tiles.getContext('2d')!;
+        for (let n = 0; n < COUNT; n++)
+          for (let y = 0; y < 8; y++)
+            for (let x = 0; x < 8; x++) {
+              const index = tilePixel(capture, bg, n, x, y);
+              t.fillStyle = index
+                ? `rgb(${color(capture, bank * 16 + index).join(',')})`
+                : (n + (n >> 4)) % 2
+                  ? '#3e3e42'
+                  : '#2c2c30';
+              t.fillRect((n % 16) * 8 + x, Math.floor(n / 16) * 8 + y, 1, 1);
+            }
+        t.lineWidth = 1;
+        t.strokeStyle = '#ffdc70';
+        t.strokeRect((tile % 16) * 8 + 0.5, Math.floor(tile / 16) * 8 + 0.5, 7, 7);
+        const z = zoom.getContext('2d')!;
+        const digits: string[] = [];
+        for (let y = 0; y < 8; y++)
+          for (let x = 0; x < 8; x++) {
+            const index = tilePixel(capture, bg, tile, x, y);
+            pixel(z, x, y, index, 32);
+            digits.push(`<span>${index.toString(16)}</span>`);
+          }
+        this.querySelector('[data-digits]')!.innerHTML = digits.join('');
+        const p = paletteCanvas.getContext('2d')!;
+        p.clearRect(0, 0, 256, 256);
+        for (let b = 0; b < 16; b++)
+          for (let i = 0; i < 16; i++) {
+            p.fillStyle = `rgb(${color(capture, b * 16 + i).join(',')})`;
+            p.fillRect(i * 16 + 1, b * 16 + 1, 14, 14);
+          }
+        p.lineWidth = 2;
+        p.strokeStyle = '#ffdc70';
+        p.strokeRect(1, bank * 16 + 1, 254, 14);
+        this.querySelector('[data-bank-label]')!.textContent = `Palette bank ${bank}`;
+        const address = bg.tileBase + tile * 32;
+        this.querySelector('[data-zoom-label]')!.textContent = `Tile ${tile} at ${hex(0x06000000 + address)}`;
+      };
+
+      const select = (n: number) => {
+        tile = Math.max(0, Math.min(COUNT - 1, n));
+        if (banks.has(tile)) bank = banks.get(tile)!;
+        update();
+      };
+
+      tiles.onclick = event => {
+        const r = tiles.getBoundingClientRect();
+        select(
+          Math.floor(((event.clientY - r.top) / r.height) * rows) * 16 +
+            Math.floor(((event.clientX - r.left) / r.width) * 16),
+        );
+      };
+
+      tiles.onkeydown = event => {
+        const moves: Record<string, number> = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -16, ArrowDown: 16 };
+        if (!(event.key in moves)) return;
+
+        event.preventDefault();
+        select(tile + moves[event.key]);
+      };
+
+      paletteCanvas.onclick = event => {
+        const r = paletteCanvas.getBoundingClientRect();
+        bank = Math.floor(((event.clientY - r.top) / r.height) * 16);
+        update();
+      };
+
+      paletteCanvas.onkeydown = event => {
+        if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+
+        event.preventDefault();
+        bank = (bank + (event.key === 'ArrowDown' ? 1 : 15)) % 16;
+        update();
+      };
+
+      this.querySelector('fieldset')!.disabled = false;
+      this.querySelector('[data-tiles-label]')!.textContent = `BG1's first ${COUNT} tiles`;
+      update();
+    }
+  }
+
+  if (!customElements.get('gx-gba-tile-viewer')) customElements.define('gx-gba-tile-viewer', GbaTileViewer);
+</script>
+
+<style>
+  .tile-layout {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+    align-items: start;
+  }
+
+  .tile-layout figure {
+    margin: 0;
+    min-width: 0;
+  }
+
+  .tile-layout canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+    image-rendering: pixelated;
+    background: #111;
+  }
+
+  .tile-layout [data-tiles] {
+    cursor: crosshair;
+  }
+
+  .tile-zoom {
+    position: relative;
+  }
+
+  .tile-digits {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    grid-template-rows: repeat(8, 1fr);
+    pointer-events: none;
+  }
+
+  .tile-digits :global(span) {
+    display: grid;
+    place-items: center;
+    font:
+      600 0.8rem ui-monospace,
+      monospace;
+    color: #fff;
+    text-shadow:
+      0 0 2px #000,
+      0 0 2px #000,
+      0 0 3px #000;
+  }
+
+  .tile-layout canvas:focus-visible,
+  .tile-banks canvas:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 3px;
+  }
+
+  .tile-layout :is(figcaption, .tile-caption) {
+    margin: 0.5rem 0 0 !important;
+    font-size: 0.8rem;
+    text-align: center;
+    color: var(--muted-foreground);
+  }
+
+  .tile-banks canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1;
+    image-rendering: pixelated;
+    cursor: pointer;
+    background: #111;
+  }
+
+  @media (max-width: 560px) {
+    .tile-layout {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .tile-layout > :first-child {
+      grid-column: span 2;
+    }
+
+    .tile-digits :global(span) {
+      font-size: 0.65rem;
+    }
+  }
+</style>

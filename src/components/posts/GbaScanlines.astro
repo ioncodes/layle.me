@@ -1,0 +1,255 @@
+---
+import '../../styles/gx-demos.css';
+---
+
+<gx-gba-scanlines class="gx-demo not-prose">
+  <div class="scan-panels">
+    <figure class="scan-screen">
+      <img
+        src="/images/gba-bitmap/f-zero.png"
+        width="240"
+        height="160"
+        alt="F-Zero: Maximum Velocity: a hovercraft racing along a track that curves to the left."
+        loading="lazy"
+      />
+      <span class="scan-line" data-line hidden aria-hidden="true"></span>
+      <figcaption>Screen</figcaption>
+    </figure>
+    <figure class="scan-map">
+      <svg data-map role="img" aria-label="BG2's track map, with the part each line of the screen shows." hidden>
+        <defs>
+          <pattern data-pattern patternUnits="userSpaceOnUse" width="1024" height="1024">
+            <image data-tile width="1024" height="1024" preserveAspectRatio="none"></image>
+          </pattern>
+        </defs>
+        <rect data-fill></rect>
+        <polygon data-area class="scan-area"></polygon>
+        <g data-rows class="scan-rows"></g>
+        <line data-row class="scan-selected"></line>
+      </svg>
+      <figcaption>BG2's map, 1024 × 1024, repeating</figcaption>
+    </figure>
+  </div>
+  <fieldset disabled class="scan-controls">
+    <label>
+      Line: <output data-line-value>100</output>
+      <input data-slider type="range" min="33" max="159" value="100" aria-label="Screen line" />
+    </label>
+  </fieldset>
+  <div class="scan-readout" data-readout aria-live="polite"></div>
+</gx-gba-scanlines>
+
+<script>
+  import { WIDTH, HEIGHT } from './gba-bitmap';
+  import { loadCapture, type Capture } from './gba-video';
+  import { affineBackground, affineImage, fixed8 } from './gba-affine';
+
+  class GbaScanlines extends HTMLElement {
+    async connectedCallback() {
+      let capture: Capture;
+
+      try {
+        capture = await loadCapture('f-zero');
+      } catch {
+        return;
+      }
+
+      if (!this.isConnected || !capture.lines) return;
+
+      const lines = capture.lines;
+      const bg = affineBackground(capture, 2);
+      const svg = this.querySelector<SVGSVGElement>('[data-map]')!;
+      const slider = this.querySelector<HTMLInputElement>('[data-slider]')!;
+      const marker = this.querySelector<HTMLElement>('[data-line]')!;
+      const first = Number(slider.min);
+
+      const mapCanvas = document.createElement('canvas');
+      mapCanvas.width = mapCanvas.height = bg.size;
+      mapCanvas.getContext('2d')!.putImageData(affineImage(capture, bg), 0, 0);
+      svg.querySelector('image')!.setAttribute('href', mapCanvas.toDataURL());
+      const id = `scan-map-${Math.random().toString(36).slice(2)}`;
+      svg.querySelector('[data-pattern]')!.id = id;
+
+      // Each line shows a straight row of the map: from the reference point, 240 steps of (PA, PC).
+      const row = (n: number) => {
+        const { pa, pc, x, y } = lines[n].bg[0];
+        return [x / 256, y / 256, (x + WIDTH * pa) / 256, (y + WIDTH * pc) / 256];
+      };
+      const rows = Array.from({ length: HEIGHT - first }, (_, i) => row(first + i));
+      const xs = rows.flatMap(r => [r[0], r[2]]);
+      const ys = rows.flatMap(r => [r[1], r[3]]);
+      const pad = 24;
+      const minX = Math.min(...xs) - pad;
+      const minY = Math.min(...ys) - pad;
+      const width = Math.max(...xs) - minX + pad;
+      const height = Math.max(...ys) - minY + pad;
+      svg.setAttribute('viewBox', `${minX} ${minY} ${width} ${height}`);
+      svg.style.aspectRatio = `${width} / ${height}`;
+      svg.style.setProperty('--unit', String(width / 400));
+      const fill = svg.querySelector('[data-fill]')!;
+      for (const [k, v] of Object.entries({ x: minX, y: minY, width, height })) fill.setAttribute(k, String(v));
+      fill.setAttribute('fill', `url(#${id})`);
+
+      // The visible part of the track: from the farthest line to the nearest.
+      const far = rows[0];
+      const near = rows[rows.length - 1];
+      svg
+        .querySelector('[data-area]')!
+        .setAttribute('points', `${far[0]},${far[1]} ${far[2]},${far[3]} ${near[2]},${near[3]} ${near[0]},${near[1]}`);
+
+      // Every 8th line, to show how they bunch up toward the bottom of the screen.
+      svg.querySelector('[data-rows]')!.innerHTML = rows
+        .filter((_, i) => (first + i) % 8 === 0 || first + i === HEIGHT - 1)
+        .map(r => `<line x1="${r[0]}" y1="${r[1]}" x2="${r[2]}" y2="${r[3]}"></line>`)
+        .join('');
+
+      const update = () => {
+        const n = Number(slider.value);
+        const [x1, y1, x2, y2] = row(n);
+        const line = svg.querySelector('[data-row]')!;
+        line.setAttribute('x1', String(x1));
+        line.setAttribute('y1', String(y1));
+        line.setAttribute('x2', String(x2));
+        line.setAttribute('y2', String(y2));
+        marker.style.top = `${((n + 0.5) / HEIGHT) * 100}%`;
+        this.querySelector('[data-line-value]')!.textContent = String(n);
+
+        const { pa, pb, pc, pd, x, y } = lines[n].bg[0];
+        const next = lines[n + 1]?.bg[0];
+        this.querySelector('[data-readout]')!.innerHTML = `
+          <table>
+            <thead><tr><th></th><th>PA</th><th>PB</th><th>PC</th><th>PD</th><th>X</th><th>Y</th></tr></thead>
+            <tbody>
+              <tr><th>Value</th>${[pa, pb, pc, pd, x, y].map(v => `<td>${fixed8(v)}</td>`).join('')}</tr>
+            </tbody>
+          </table>
+          <p>The line covers ${(Math.hypot(pa, pc) * WIDTH / 256).toFixed(1)} texels of the track, ${(Math.hypot(pa, pc) / 256).toFixed(2)} per pixel.${
+            next ? ` The next line starts at X + PB = ${fixed8(next.x)} and Y + PD = ${fixed8(next.y)}.` : ''
+          }</p>`;
+      };
+
+      slider.oninput = update;
+      svg.removeAttribute('hidden');
+      marker.hidden = false;
+      this.querySelector('fieldset')!.disabled = false;
+      update();
+    }
+  }
+
+  if (!customElements.get('gx-gba-scanlines')) customElements.define('gx-gba-scanlines', GbaScanlines);
+</script>
+
+<style>
+  .scan-panels {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    align-items: start;
+  }
+
+  .scan-panels figure {
+    position: relative;
+    margin: 0;
+  }
+
+  .scan-panels figcaption {
+    margin-top: 0.4rem;
+    font-size: 0.8rem;
+    text-align: center;
+    color: var(--muted-foreground);
+  }
+
+  .scan-panels [hidden] {
+    display: none !important;
+  }
+
+  .scan-screen img {
+    display: block;
+    width: 100%;
+    height: auto;
+    image-rendering: pixelated;
+  }
+
+  .scan-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #ffdc70;
+    box-shadow: 0 0 0 1px #111;
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+
+  .scan-map svg {
+    display: block;
+    width: 100%;
+    background: var(--muted);
+  }
+
+  .scan-map image {
+    image-rendering: pixelated;
+  }
+
+  .scan-area {
+    fill: rgb(255 220 112 / 0.18);
+    stroke: #ffdc70;
+    stroke-width: calc(1.5px * var(--unit, 1));
+    stroke-linejoin: round;
+  }
+
+  .scan-rows :global(line) {
+    stroke: rgb(255 255 255 / 0.6);
+    stroke-width: calc(1px * var(--unit, 1));
+  }
+
+  .scan-selected {
+    stroke: #ffdc70;
+    stroke-width: calc(3px * var(--unit, 1));
+    stroke-linecap: round;
+  }
+
+  .scan-controls {
+    margin-top: 1rem !important;
+  }
+
+  .scan-readout {
+    margin-top: 1rem;
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
+    overflow-x: auto;
+  }
+
+  .scan-readout :global(table) {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .scan-readout :global(th),
+  .scan-readout :global(td) {
+    padding: 0.3rem 0.5rem 0.3rem 0;
+    text-align: left;
+    border-top: 1px solid var(--border);
+    font-weight: 400;
+  }
+
+  .scan-readout :global(thead th) {
+    border-top: 0;
+    color: var(--muted-foreground);
+    font-size: 0.8rem;
+  }
+
+  .scan-readout :global(tbody th) {
+    color: var(--muted-foreground);
+  }
+
+  .scan-readout :global(p) {
+    margin: 0.75rem 0 0 !important;
+  }
+
+  @media (max-width: 560px) {
+    .scan-panels {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

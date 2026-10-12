@@ -1,0 +1,137 @@
+---
+author: "Layle"
+title: "Goin' Quackers: Why Donald's Feet Exploded"
+summary: "An ARAM DMA alignment bug shifted animation records, corrupted bone rotations and stretched Donald across the room."
+image:
+  src: "/images/quackers/before.webp"
+  alt: "Donald Duck with an elongated foot and distorted body in the laboratory in Goin' Quackers."
+  position: "65% 80%"
+tags: ["emulation", "gamecube", "graphics", "gecko"]
+date: 2026-10-13T20:00:00Z
+unlisted: true
+---
+
+import Math from '../../src/components/Math.astro';
+import ImageComparison from '../../src/components/posts/ImageComparison.astro';
+import AramOffset from '../../src/components/posts/AramOffset.astro';
+import QuackersModel from '../../src/components/posts/QuackersModel.astro';
+
+Donald was having a particularly bad day in *Disney's Donald Duck: Goin' Quackers*. In [Gecko](https://github.com/ioncodes/gecko), my GameCube and Wii emulator, his idle animation in the laboratory started out normally, but then his feet stretched out and his body folded into itself! When I let it run a little longer, the triangles grew large enough to cover the whole room...
+
+<ImageComparison
+  before="/images/quackers/before.webp"
+  after="/images/quackers/after.webp"
+  width={2560}
+  height={1792}
+  beforeAlt="Donald's foot stretches into a long yellow triangle while his head and body twist into each other."
+  afterAlt="Donald in the laboratory after the alignment fix, with his body and feet intact."
+  caption="Watch Donald's feet and the position of his head."
+  zoom={{ label: 'Enlarge Donald', origin: '61% 80%' }}
+/>
+
+Despite how it looks, the graphics code wasn't to blame. A memory transfer was ignoring an alignment rule, so the game read the wrong animation data long before the graphics processor ever saw a vertex. Let's look into this!
+
+## Following the vertices backwards
+
+A mesh is made of triangles that share their corners, or **vertices**. If some of those vertices end up far from where they belong, the triangles still connect the same corners, so a small surface can turn into an enormous spike. That's what I usually call a vertex explosion.
+
+The first question was where the bad positions came from. Goin' Quackers animates Donald on the CPU: it calculates a transform for each bone, uses those transforms to move the model's vertices and writes the results into RAM. [GX](https://www.gc-forever.com/wiki/index.php?title=Hardware_Acronyms#GP,_GX), the GameCube's graphics processor, then reads those positions and draws the triangles.
+
+The positions were already wrong in RAM, so GX was faithfully drawing broken geometry. Switching from Gecko's JIT to the CPU interpreter produced the same deformation, which pointed at something both execution paths had in common rather than a bug in translated code.
+
+Here's Donald's model. Switch between the poses and rotate him to see how far the damage goes. The viewer uses simple colors in place of the game's textures and lighting.
+
+<QuackersModel />
+
+From the vertex writes, I worked back through the bone matrices to the animation keyframes. A **keyframe** describes a pose at a particular time and the game interpolates between 2 of them to produce the poses in between. Donald's animation was feeding that calculation values which no longer belonged together... Turns out the keyframe records had arrived through ARAM!
+
+## Animation in audio memory
+
+Besides its main RAM, the GameCube has a separate 16 MiB memory called **ARAM**. It's mostly used for audio, but games are free to store other data there too. Goin' Quackers keeps animation data in ARAM and brings small pieces of it into main RAM with **DMA**.
+
+ARAM DMA only works in 32-byte blocks. Its main RAM address, ARAM address and transfer length are all masked with `0x03ff_ffe0`, which keeps bits 5 through 25 and clears the lowest 5 bits. The transfer direction is bit 31 of the length register. [Dolphin's DSP register implementation](https://github.com/dolphin-emu/dolphin/blob/9410094d9ff89a526ce353f5607245120321962c/Source/Core/Core/HW/DSP.cpp#L189-L197) applies the same masks when these registers are written.
+
+That matters because the game's animation records are **24 bytes** long, so most of them don't start on a 32-byte boundary. The game handles this itself: it requests 64 bytes around the record and picks the 24 bytes it needs out of that buffer afterward.
+
+For a record at `0x7888`, the intended sequence looks like this:
+
+1. DMA ignores the low 5 bits and starts copying at `0x7880`.
+2. The completion callback works out how far the record is into its block: 8 bytes.
+3. The callback skips those 8 bytes in the temporary buffer and copies the 24-byte record.
+
+The game deliberately keeps the original, unaligned address around for that last step. The problem was that Gecko used it as the DMA start address too!
+
+## Applying the offset twice
+
+Without the mask, Gecko started copying at `0x7888`. The callback then skipped another 8 bytes, so the record it extracted actually started at `0x7890`.
+
+More generally, let <Math tex={String.raw`B`} /> be the aligned block address and <Math tex={String.raw`r`} /> the record's offset within that block, so the record starts at <Math tex={String.raw`B+r`} />. With aligned DMA, the callback's extraction lands exactly there:
+
+<Math block tex={String.raw`\displaystyle B+r`} />
+
+Gecko's DMA had already started at the record, so the same extraction overshot it:
+
+<Math block tex={String.raw`\displaystyle (B+r)+r=B+2r`} />
+
+Every record was shifted by <Math tex={String.raw`r`} /> bytes. Try changing the offset below, especially to 0:
+
+<AramOffset />
+
+An aligned record comes out correctly either way, which is why this didn't break every frame of every animation. Since the records are 24 bytes long, consecutive records sit at different positions within their blocks. For example, starting at offset 16 the offsets go **16, 8, 0, 24** and then repeat, so 1 in every 4 records happens to work even without the mask.
+
+At offsets 8 and 16, the extracted bytes straddle 2 records. At offset 24, the shift skips an entire record and selects the next one instead. The fields can still look plausible, but the game is no longer reading the keyframe it asked for.
+
+## From bytes to a broken bone
+
+To see how shifted bytes can turn into a stretched foot, here's an example using the game's interpolation rules.
+
+Take an animation time of **33.54 ticks**, a current keyframe at **25** and a next keyframe at **0**, so the next keyframe supposedly comes before the current one. The game calculates the interpolation factor <Math tex={String.raw`t`} /> like this:
+
+<Math block tex={String.raw`\displaystyle t=\frac{T-T_0}{T_1-T_0}`} />
+
+Here <Math tex={String.raw`T`} /> is the animation clock and <Math tex={String.raw`T_0,T_1`} /> are the 2 keyframe times, all in ticks. Substituting these values gives:
+
+<Math block tex={String.raw`\displaystyle t=\frac{33.54-25}{0-25}\approx-0.3416`} />
+
+A factor between 0 and 1 blends between the 2 keyframes, whereas this negative factor extrapolates beyond the first one. That alone doesn't explain an exploding model, though, because exact slerp between valid unit quaternions preserves their length even when extrapolating. The mismatch in the rotation data is what matters here.
+
+The game stores bone rotations as **quaternions** (I hate them with a passion). A quaternion has 4 components and the matrix formula the game uses assumes its length is 1. To blend 2 of them, the game uses spherical interpolation, or **slerp**. For unit quaternions <Math tex={String.raw`q_0,q_1`} /> separated by an angle <Math tex={String.raw`\theta`} /> in quaternion space, the result is:
+
+<Math block tex={String.raw`\displaystyle q=a q_0+b q_1`} />
+
+with the weights:
+
+<Math block tex={String.raw`\displaystyle \begin{aligned} a&=\frac{\sin((1-t)\theta)}{\sin\theta} \\[0.6em] b&=\frac{\sin(t\theta)}{\sin\theta} \end{aligned}`} />
+
+For this animation path, the game reads a stored angle rather than calculating <Math tex={String.raw`\theta`} /> from the quaternions. It looks up the sines in a table with 4'096 entries per full turn. Suppose the record supplies **113 units**, where each unit is <Math tex={String.raw`\pi/2048`} /> radians, giving about **0.17334 radians**. If the 2 unit quaternions have a dot product of **0.70769**, their actual separation is <Math tex={String.raw`\arccos(0.70769)\approx0.78457`} /> radians. The stored angle doesn't match the rotations it is supposed to describe.
+
+The table lookup adds a small but important detail to the formula above. With a stored angle <Math tex={String.raw`N`} />, the game computes <Math tex={String.raw`k=\operatorname{trunc}(0.5+tN)`} />, where truncation discards the fractional part toward zero. Here that gives <Math tex={String.raw`k=-38`} />. The sine indices are then <Math tex={String.raw`N-k=151`} /> and <Math tex={String.raw`k=-38`} />, with negative indices wrapping around the table:
+
+<Math block tex={String.raw`\displaystyle \begin{aligned} a&=\frac{\sin(151\pi/2048)}{\sin(113\pi/2048)}\approx1.33102 \\[0.6em] b&=\frac{\sin(-38\pi/2048)}{\sin(113\pi/2048)}\approx-0.33778 \end{aligned}`} />
+
+These differ slightly from evaluating the continuous slerp formula directly. More importantly, they don't preserve the length of these mismatched inputs. For unit quaternions, the squared length of the blend is:
+
+<Math block tex={String.raw`\displaystyle \lVert q\rVert^2=a^2+b^2+2ab(q_0\cdot q_1)`} />
+
+Substituting the weights and dot product gives <Math tex={String.raw`\lVert q\rVert\approx1.118`} /> instead of 1.
+
+The routine that turns a quaternion into a matrix doesn't normalize it first, so a nonunit result can stretch the bone as well as rotating it. Each bone's transform is then combined with its parent's, allowing the damage to propagate down the hierarchy.
+
+The last step is **skinning**, where each vertex's position is blended from the transforms of the bones it's attached to. Even when those weights add up to 1, a blend of damaged transforms can still put the vertex far from where it belongs. The CPU writes the resulting position to RAM and GX draws exactly what it's given!
+
+Every one of these calculations did exactly what it was supposed to. The mistake happened several steps earlier, when the bytes were copied.
+
+## The fix
+
+[The fix](https://github.com/ioncodes/gecko/commit/8c59b14298dedd827caa8de058048bb0b968dd82) applies the address and length masks whenever the game writes the ARAM DMA registers, while preserving the direction bit in the length register:
+
+```rust
+const ARAM_DMA_MASK: u32 = 0x03ff_ffe0;
+
+address = written_address & ARAM_DMA_MASK;
+control = written_control & (0x8000_0000 | ARAM_DMA_MASK);
+```
+
+Loading a savestate applies the same masks too, because an older build can have saved unmasked register values. Writing the lower half of the length register starts the transfer as before, whereas writing only its upper half doesn't.
+
+All that math made my brain explode, but hey, Donald gets to keep his feet :^)

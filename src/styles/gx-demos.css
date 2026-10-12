@@ -5,14 +5,44 @@
   color: var(--foreground);
   font: inherit;
   line-height: 1.5;
-  --gx-blue: #2864dc;
-  --gx-red: #e64c43;
-  --gx-gold: #986500;
 }
-.dark .gx-demo { --gx-gold: #e3b952; }
+.gx-demo, .gx-palette {
+  --gx-blue: #648ac0;
+  --gx-red: #cb7781;
+  --gx-gold: #c6a05d;
+  --gx-blue-text: #315b98;
+  --gx-red-text: #a74653;
+  --gx-gold-text: #805c1f;
+  --gx-cell-blue: color-mix(in srgb, var(--gx-blue) 45%, var(--background));
+  --gx-cell-red: color-mix(in srgb, var(--gx-red) 45%, var(--background));
+  --gx-cell-gold: color-mix(in srgb, var(--gx-gold) 45%, var(--background));
+  --gx-cell-green: color-mix(in srgb, #6fa37a 45%, var(--background));
+  --gx-cell-purple: color-mix(in srgb, #9a82c6 45%, var(--background));
+  --gx-cell-teal: color-mix(in srgb, #4fa3a5 45%, var(--background));
+  --gx-cell-orange: color-mix(in srgb, #d08a4a 45%, var(--background));
+  --gx-cell-pink: color-mix(in srgb, #c97bb2 45%, var(--background));
+  --gx-cell-olive: color-mix(in srgb, #9aa94f 45%, var(--background));
+  --gx-cell-slate: color-mix(in srgb, #7f8fa6 45%, var(--background));
+}
+.dark :is(.gx-demo, .gx-palette) {
+  --gx-blue-text: #9cbce6;
+  --gx-red-text: #e7a0a9;
+  --gx-gold-text: #dabb7e;
+}
 .gx-demo * { box-sizing: border-box; }
 .gx-demo p { margin: .75rem 0; }
+.gx-demo .gx-demo-status {
+  margin: 1rem 0 0;
+  padding: .625rem .875rem;
+  border-inline-start: 2px solid color-mix(in srgb, var(--primary) 55%, var(--border));
+  background: color-mix(in srgb, var(--muted) 55%, var(--background));
+  color: var(--muted-foreground);
+  font-size: .875rem;
+  line-height: 1.6;
+  text-align: start;
+}
 .gx-demo fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+.gx-demo .gx-slider-controls { margin-top: 1.25rem; margin-bottom: 1rem; }
 .gx-demo label { display: block; font-size: .875rem; font-weight: 550; }
 .gx-demo input[type="range"] { display: block; width: 100%; margin: .65rem 0; accent-color: var(--primary); cursor: pointer; }
 .gx-demo input[type="checkbox"] { width: 1rem; height: 1rem; margin-right: .4rem; accent-color: var(--primary); vertical-align: -.15rem; }
@@ -32,11 +62,9 @@ gx-vertex-skip.gx-demo .gx-result { max-width: 560px; margin: auto; }
 .gx-demo .gx-legend { display: flex; flex-wrap: wrap; gap: .4rem 1.25rem; font-size: .875rem; }
 .gx-demo .gx-legend span::before { content: ''; display: inline-block; width: 1.1rem; border-top: 3px solid; margin: 0 .4rem .2rem 0; }
 .gx-demo .gx-legend .gx-reference::before { border-top-style: dotted; }
-.gx-demo .gx-blue { color: var(--gx-blue); }
-.dark .gx-demo .gx-blue { color: #8bb2ff; }
-.gx-demo .gx-red { color: #c0392f; }
-.dark .gx-demo .gx-red { color: var(--gx-red); }
-.gx-demo .gx-reference { color: var(--gx-gold); }
+.gx-demo .gx-blue { color: var(--gx-blue-text); }
+.gx-demo .gx-red { color: var(--gx-red-text); }
+.gx-demo .gx-reference { color: var(--gx-gold-text); }
 .gx-demo .gx-comparison { position: relative; overflow: hidden; background: #111; }
 .gx-demo .gx-comparison img { display: block; width: 100%; height: auto; margin: 0; }
 .gx-demo .gx-before { position: absolute; inset: 0; clip-path: inset(0 50% 0 0); }
@@ -46,7 +74,8 @@ gx-vertex-skip.gx-demo .gx-result { max-width: 560px; margin: auto; }
 .gx-demo .gx-comparison-slider { position: relative; padding-bottom: 1.75rem; }
 .gx-demo .gx-comparison-slider input { margin: 0; }
 .gx-demo .gx-comparison-labels { position: absolute; bottom: 0; left: clamp(4.75rem, var(--comparison-position, 50%), calc(100% - 4.75rem)); display: flex; gap: 1.25rem; transform: translateX(-50%); font-size: 1rem; font-weight: 650; line-height: 1.25; pointer-events: none; }
-.gx-demo .gx-comparison-labels span { width: 4rem; text-align: center; }
+.gx-demo .gx-comparison-labels span { min-width: 4rem; white-space: nowrap; }
+.gx-demo .gx-comparison-labels span:first-child { text-align: right; }
 .gx-demo .gx-comparison-controls > label { margin-top: .75rem; }
 .gx-demo .gx-comparison-caption { margin-top: .75rem; text-align: center; font-size: .875rem; color: var(--muted-foreground); }
 .gx-demo a { color: var(--primary); text-decoration: underline; text-underline-offset: 3px; }
@@ -56,3 +85,28 @@ gx-vertex-skip.gx-demo .gx-result { max-width: 560px; margin: auto; }
 @media (max-width: 620px) {
   .gx-demo .gx-figures { grid-template-columns: 1fr; }
 }
+.gx-demo .gx-bits { font-size: .85rem; font-variant-numeric: tabular-nums; }
+.gx-demo .gx-bits + .gx-bits { margin-top: .9rem; }
+.gx-demo .gx-bits-head { display: flex; justify-content: space-between; gap: .75rem; margin-bottom: .3rem; color: var(--muted-foreground); }
+.gx-demo .gx-bits-head code { font-size: .8rem; color: var(--foreground); }
+.gx-demo .gx-bits-cells { display: grid; grid-template-columns: repeat(16, minmax(0, 1fr)); gap: 2px; font-family: ui-monospace, monospace; font-size: .75rem; text-align: center; }
+.gx-demo .gx-bit { padding: .15rem 0; border-radius: 2px; background: var(--muted); color: var(--muted-foreground); }
+.gx-demo .gx-bit:not(.gx-bit-unused) { color: var(--foreground); }
+.gx-demo .gx-bit-unused { background: repeating-linear-gradient(135deg, var(--muted) 0 4px, transparent 4px 8px); box-shadow: inset 0 0 0 1px var(--border); }
+.gx-demo .gx-bit-blue { background: var(--gx-cell-blue); }
+.gx-demo .gx-bit-red { background: var(--gx-cell-red); }
+.gx-demo .gx-bit-gold { background: var(--gx-cell-gold); }
+.gx-demo .gx-bit-green { background: var(--gx-cell-green); }
+.gx-demo .gx-bit-purple { background: var(--gx-cell-purple); }
+.gx-demo .gx-bit-teal { background: var(--gx-cell-teal); }
+.gx-demo .gx-bit-orange { background: var(--gx-cell-orange); }
+.gx-demo .gx-bit-pink { background: var(--gx-cell-pink); }
+.gx-demo .gx-bit-olive { background: var(--gx-cell-olive); }
+.gx-demo .gx-bit-slate { background: var(--gx-cell-slate); }
+.gx-demo .gx-bit-muted { background: var(--muted); }
+.gx-demo .gx-bits-fields { display: flex; flex-wrap: wrap; gap: .2rem 1.1rem; margin: .4rem 0 0; padding: 0; list-style: none; }
+.gx-demo .gx-bits-fields li { margin: 0; }
+.gx-demo .gx-bits-fields b { font-weight: 600; }
+.gx-demo .gx-swatch { display: inline-block; width: .7rem; height: .7rem; margin-right: .35rem; border-radius: 2px; vertical-align: -.05rem; }
+
+.gx-demo .gx-comparison[data-pixelated] img { image-rendering: pixelated; }

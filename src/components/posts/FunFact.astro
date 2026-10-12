@@ -1,0 +1,15 @@
+---
+// The "Fun Fact" aside used across posts. Write the fact as Markdown between the tags,
+// with blank lines around it so MDX turns it into a paragraph.
+interface Props {
+  title?: string;
+}
+
+const { title = 'Fun Fact' } = Astro.props;
+const id = `fun-fact-${Math.random().toString(36).slice(2, 10)}`;
+---
+
+<aside aria-labelledby={id} class="my-8 border border-border bg-muted/40 px-5 py-4 [&>p]:my-0">
+  <strong id={id} class="mb-2 block text-base">{title}</strong>
+  <slot />
+</aside>

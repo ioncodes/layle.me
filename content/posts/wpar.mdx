@@ -17,6 +17,7 @@ import WparRouting from '../../src/components/posts/WparRouting.astro';
 import WparBurst from '../../src/components/posts/WparBurst.astro';
 import WparPadding from '../../src/components/posts/WparPadding.astro';
 import WparFloat from '../../src/components/posts/WparFloat.astro';
+import FunFact from '../../src/components/posts/FunFact.astro';
 
 While helping my friend [vxpm](https://github.com/vxpm) debug *Metroid Prime* in [Lazuli](https://github.com/vxpm/lazuli), his GameCube emulator, I traced the exploding geometry to **WPAR**, the CPU's Write Pipe Address Register.
 
@@ -27,21 +28,20 @@ The Metroid Prime comparisons below reproduce that behavior by deliberately disa
 <ImageComparison
   before="/images/gecko/wpar-before.webp"
   after="/images/gecko/wpar-after.webp"
-  beforeAlt="Metroid Prime reproduction in Gecko with the WPAR reset disabled: bright triangles cover the sky above the station."
+  beforeAlt="Metroid Prime in Gecko with the WPAR reset disabled: bright triangles cover the sky above the station."
   afterAlt="The same station flyby with the WPAR reset implemented: the sky and station are unobscured."
   width={1195}
   height={896}
   caption="Disabling the WPAR reset in Gecko reproduces the triangles above the station."
 />
 
-In this reproduction, a vertex's Y coordinate went from roughly `0.18` to minus 3.2 quadrillion. That'll stretch a triangle quite a bit :^)
+Here, a vertex's Y coordinate went from roughly `0.18` to minus 3.2 quadrillion. That'll stretch a triangle quite a bit :^)
 
-<aside aria-labelledby="wpar-lazuli-fun-fact" className="my-8 border border-border bg-muted/40 px-5 py-4 [&>p]:my-0">
-  <strong id="wpar-lazuli-fun-fact" className="mb-2 block text-base">Fun fact</strong>
+<FunFact>
 
 [Lazuli](https://github.com/vxpm/lazuli), along with a few other emulators, was a big inspiration for me. Go check it out!
 
-</aside>
+</FunFact>
 
 ## A bit of gathering
 
@@ -65,12 +65,11 @@ The [WPAR description](https://doc.kodewerx.org/documents/gekko_user_manual.pdf#
 
 `mtspr` is the PowerPC instruction for writing a special-purpose register. Writing WPAR discards pending bytes **even if the address doesn't change**, while bytes already transferred to RAM stay there.
 
-<aside aria-labelledby="wpar-cpu-fun-fact" className="my-8 border border-border bg-muted/40 px-5 py-4 [&>p]:my-0">
-  <strong id="wpar-cpu-fun-fact" className="mb-2 block text-base">Fun fact</strong>
+<FunFact>
 
 I've been asked how writing an internal CPU register can affect hardware outside the CPU. The write-gather buffer is inside the CPU too!
 
-</aside>
+</FunFact>
 
 Suppose 1 padding byte remains in the pipe when software rewrites WPAR and redirects PI to a new buffer. The next 32 bytes should form a burst of their own, but without the reset, the old byte takes the first slot. Only 31 new bytes fit and the last byte stays behind.
 
@@ -145,7 +144,7 @@ The broken Y coordinate comes from the bytes `D9 36 BC 00`. A 32-bit float uses 
 
 Here, <Math tex="s" /> is the sign bit and <Math tex="e" /> and <Math tex="f" /> are the unsigned integers stored in the exponent and fraction fields. The exponent is stored with a bias of 127, which we subtract to get the power of 2.
 
-For `D9 36 BC 00`, the sign is negative and the stored exponent is 178, giving <Math tex={String.raw`2^{178-127} = 2^{51}`} />. Multiplying by that is what makes the coordinate so enormous. The inspector below shows the calculation using the captured bytes from the Gecko reproduction:
+For `D9 36 BC 00`, the sign is negative and the stored exponent is 178, giving <Math tex={String.raw`2^{178-127} = 2^{51}`} />. Multiplying by that is what makes the coordinate so enormous. The inspector below shows the calculation using the actual bytes:
 
 <WparFloat
   bytes={[0x3c, 0x1c, 0xca, 0x3d, 0xd9, 0x36, 0xbc, 0x00, 0x00, 0x00, 0x00, 0x3e]}
@@ -190,7 +189,7 @@ retain only the incomplete tail for the next burst
 Switching off only the WPAR reset produces the glitching on the left:
 
 <figure className="not-prose my-8">
-  <video className="block h-auto w-full" controls loop playsInline preload="metadata" poster="/images/gecko/wpar-video-poster.webp" width="1600" height="640" aria-label="Metroid Prime reproduction in Gecko: WPAR reset disabled on the left and enabled on the right.">
+  <video className="block h-auto w-full" controls loop playsInline preload="metadata" poster="/images/gecko/wpar-video-poster.webp" width="1600" height="640" aria-label="Metroid Prime in Gecko: WPAR reset disabled on the left and enabled on the right.">
     <source src="/videos/gecko/metroid-prime-wpar.mp4" type="video/mp4" />
     <a href="/videos/gecko/metroid-prime-wpar.mp4">Download the comparison video.</a>
   </video>

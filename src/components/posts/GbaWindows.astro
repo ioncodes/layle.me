@@ -1,0 +1,402 @@
+---
+import '../../styles/gx-demos.css';
+---
+
+<gx-gba-windows class="gx-demo not-prose">
+  <div class="windows-stage">
+    <img
+      data-fallback
+      src="/images/gba-bitmap/tales-intro.png"
+      width="240"
+      height="160"
+      alt="The first words of the quote on a black screen, with the rest still hidden."
+      loading="lazy"
+    />
+    <canvas
+      data-frame
+      width="240"
+      height="160"
+      role="img"
+      aria-label="The intro text with the selected window settings. Drag a window to move it."
+      hidden></canvas>
+    <canvas data-outlines width="960" height="640" aria-hidden="true" hidden></canvas>
+  </div>
+  <fieldset disabled class="windows-controls">
+    <div class="windows-timeline">
+      <button type="button" data-play aria-label="Play the intro">Play</button>
+      <label>
+        Frame <output data-frame-number>–</output>
+        <input data-slider type="range" min="0" max="0" value="0" aria-label="Frame of the intro" />
+      </label>
+    </div>
+    <ul class="windows-legend" aria-live="polite">
+      <li><span class="windows-swatch windows-swatch-0"></span>Window 0 <span data-rect="0">–</span></li>
+      <li><span class="windows-swatch windows-swatch-1"></span>Window 1 <span data-rect="1">–</span></li>
+    </ul>
+    <div class="windows-toggles" role="group" aria-label="Where BG3 is visible">
+      <span>BG3 visible in</span>
+      <button type="button" data-region="0" aria-pressed="false">Window 0</button>
+      <button type="button" data-region="1" aria-pressed="false">Window 1</button>
+      <button type="button" data-region="2" aria-pressed="true">Outside</button>
+    </div>
+    <p class="windows-registers" data-registers>–</p>
+  </fieldset>
+</gx-gba-windows>
+
+<script>
+  import { WIDTH, HEIGHT, hex, channels, expand } from './gba-bitmap';
+  import { loadCapture, background, layer, type Capture } from './gba-video';
+
+  type Timeline = { first: number; frames: number[][] };
+
+  class GbaWindows extends HTMLElement {
+    async connectedCallback() {
+      let capture: Capture, timeline: Timeline;
+
+      try {
+        const response = await fetch('/data/gba-bitmap/tales-windows.json');
+        if (!response.ok) throw new Error();
+        [capture, timeline] = await Promise.all([loadCapture('tales-intro'), response.json()]);
+      } catch {
+        return;
+      }
+
+      if (!this.isConnected) return;
+
+      const canvas = this.querySelector<HTMLCanvasElement>('[data-frame]')!;
+      const outlines = this.querySelector<HTMLCanvasElement>('[data-outlines]')!;
+      const slider = this.querySelector<HTMLInputElement>('[data-slider]')!;
+      const regions = [...this.querySelectorAll<HTMLButtonElement>('[data-region]')];
+
+      // BG3 is bit 3 of each byte: WININ low byte for window 0, high byte for window 1, WINOUT low byte outside.
+      let visible = [false, false, true];
+      let overridden = false;
+
+      // How far the reader has dragged each window away from where the game put it.
+      let moved = [
+        { x: 0, y: 0 },
+        { x: 0, y: 0 },
+      ];
+
+      const play = this.querySelector<HTMLButtonElement>('[data-play]')!;
+
+      // The recorded text data is identical across the timeline, so one BG3 image is enough.
+      const bg3 = layer(capture, background(capture, 3));
+      slider.max = String(timeline.frames.length - 1);
+      slider.value = String(702 - timeline.first);
+      let timer = 0;
+      const frameDuration = (280896 / 16777216) * 1000;
+      let playStart = 0;
+      let startTime: number | null = null;
+
+      const rect = (h: number, v: number, offset: { x: number; y: number }) => {
+        const r = { x1: h >> 8, x2: h & 255, y1: v >> 8, y2: v & 255 };
+        const dx = Math.max(-r.x1, Math.min(WIDTH - r.x2, offset.x));
+        const dy = Math.max(-r.y1, Math.min(HEIGHT - r.y2, offset.y));
+        return { x1: r.x1 + dx, x2: r.x2 + dx, y1: r.y1 + dy, y2: r.y2 + dy };
+      };
+
+      let windows: ({ x1: number; x2: number; y1: number; y2: number } | null)[] = [];
+
+      const update = () => {
+        const [dispcnt, win0h, win1h, win0v, win1v, winin, winout, bldcnt, , bldy] =
+          timeline.frames[Number(slider.value)];
+        windows = [
+          dispcnt & 0x2000 ? rect(win0h, win0v, moved[0]) : null,
+          dispcnt & 0x4000 ? rect(win1h, win1v, moved[1]) : null,
+        ];
+
+        // Until the reader changes them, the buttons follow the game's own bits.
+        if (!overridden)
+          visible = [Boolean(winin & 0x0008), Boolean(winin & 0x0800), Boolean(winout & 0x0008)];
+        const winIn = (winin & ~0x0808) | (visible[0] ? 0x0008 : 0) | (visible[1] ? 0x0800 : 0);
+        const winOut = (winout & ~0x0008) | (visible[2] ? 0x0008 : 0);
+        const registers = windows.map(w => (w ? [(w.x1 << 8) | w.x2, (w.y1 << 8) | w.y2] : [0, 0]));
+        const image = new ImageData(WIDTH, HEIGHT);
+        const effect = (bldcnt >> 6) & 3;
+        const evy = Math.min(16, bldy & 31);
+
+        for (let i = 0; i < WIDTH * HEIGHT; i++) {
+          const x = i % WIDTH;
+          const y = Math.floor(i / WIDTH);
+
+          // Window 0 wins over window 1, and everything else is outside. Without windows, everything is enabled.
+          const region = windows.findIndex(w => w && x >= w.x1 && x < w.x2 && y >= w.y1 && y < w.y2);
+          const mask = !(dispcnt & 0xe000)
+            ? 0x3f
+            : region === 0
+              ? winIn & 0xff
+              : region === 1
+                ? winIn >> 8
+                : winOut & 0xff;
+          const shown = mask & 0x08 && dispcnt & 0x0800 && bg3[i] >= 0;
+
+          // BG3 is layer 3 and the backdrop layer 5 in BLDCNT's list of first targets.
+          let [r, g, b] = channels(capture.palette[shown ? bg3[i] : 0]);
+
+          if (mask & 0x20 && (bldcnt >> (shown ? 3 : 5)) & 1 && effect >= 2) {
+            [r, g, b] = [r, g, b].map(c =>
+              effect === 2 ? c + (((31 - c) * evy) >> 4) : c - ((c * evy) >> 4),
+            );
+          }
+
+          image.data.set([expand(r), expand(g), expand(b), 255], i * 4);
+        }
+
+        canvas.getContext('2d')!.putImageData(image, 0, 0);
+        const o = outlines.getContext('2d')!;
+        o.clearRect(0, 0, 960, 640);
+
+        windows.forEach((w, i) => {
+          if (!w) return;
+
+          o.strokeStyle = i === 0 ? '#ffdc70' : '#7fb0ff';
+          o.lineWidth = 3;
+          o.setLineDash(i === 0 ? [] : [10, 6]);
+          o.strokeRect(w.x1 * 4 + 1.5, w.y1 * 4 + 1.5, (w.x2 - w.x1) * 4 - 3, (w.y2 - w.y1) * 4 - 3);
+        });
+
+        this.querySelector('[data-frame-number]')!.textContent = String(
+          timeline.first + Number(slider.value),
+        );
+
+        windows.forEach((w, i) => {
+          this.querySelector(`[data-rect="${i}"]`)!.textContent = w
+            ? `x ${w.x1}–${w.x2 - 1}, y ${w.y1}–${w.y2 - 1}`
+            : 'off';
+        });
+
+        this.querySelector('[data-registers]')!.innerHTML =
+          `<code>WIN0H ${hex(registers[0][0], 4)}</code> <code>WIN0V ${hex(registers[0][1], 4)}</code> <code>WIN1H ${hex(registers[1][0], 4)}</code> <code>WIN1V ${hex(registers[1][1], 4)}</code> <code>WININ ${hex(winIn, 4)}</code> <code>WINOUT ${hex(winOut, 4)}</code> <code>BLDCNT ${hex(bldcnt, 4)}</code> <code>BLDY ${hex(bldy, 4)}</code>`;
+        regions.forEach((b, i) => b.setAttribute('aria-pressed', String(visible[i])));
+      };
+
+      const stop = () => {
+        cancelAnimationFrame(timer);
+        timer = 0;
+        play.textContent = 'Play';
+        play.setAttribute('aria-label', 'Play the intro');
+      };
+
+      const step = (timestamp: number) => {
+        if (!this.isConnected) {
+          stop();
+          return;
+        }
+
+        startTime ??= timestamp;
+        const last = Number(slider.max);
+        const next = Math.min(last, playStart + Math.floor((timestamp - startTime) / frameDuration));
+        if (next !== Number(slider.value)) {
+          slider.value = String(next);
+          update();
+        }
+        if (next === last) {
+          stop();
+          return;
+        }
+        timer = requestAnimationFrame(step);
+      };
+
+      play.onclick = () => {
+        if (timer) {
+          stop();
+          return;
+        }
+
+        if (Number(slider.value) >= Number(slider.max)) slider.value = '0';
+        reset();
+        update();
+        playStart = Number(slider.value);
+        startTime = null;
+        play.textContent = 'Pause';
+        play.setAttribute('aria-label', 'Pause the intro');
+        timer = requestAnimationFrame(step);
+      };
+
+      const reset = () => {
+        moved = [
+          { x: 0, y: 0 },
+          { x: 0, y: 0 },
+        ];
+
+        overridden = false;
+      };
+
+      slider.oninput = () => {
+        stop();
+        reset();
+        update();
+      };
+
+      regions.forEach((b, i) => {
+        b.onclick = () => {
+          overridden = true;
+          visible[i] = !visible[i];
+          update();
+        };
+      });
+
+      // Dragging moves a window by whole pixels. Window 0 is picked first where both overlap, like on the GBA.
+      let drag: { index: number; x: number; y: number; start: { x: number; y: number } } | null = null;
+
+      const point = (event: PointerEvent) => {
+        const r = canvas.getBoundingClientRect();
+
+        return {
+          x: ((event.clientX - r.left) / r.width) * WIDTH,
+          y: ((event.clientY - r.top) / r.height) * HEIGHT,
+        };
+      };
+
+      canvas.onpointerdown = event => {
+        const p = point(event);
+        const index = windows.findIndex(w => w && p.x >= w.x1 && p.x < w.x2 && p.y >= w.y1 && p.y < w.y2);
+        if (index < 0) return;
+
+        stop();
+        drag = { index, ...p, start: { ...moved[index] } };
+        canvas.setPointerCapture(event.pointerId);
+      };
+
+      canvas.onpointermove = event => {
+        const p = point(event);
+        canvas.style.cursor =
+          drag || windows.some(w => w && p.x >= w.x1 && p.x < w.x2 && p.y >= w.y1 && p.y < w.y2)
+            ? 'move'
+            : 'default';
+        if (!drag) return;
+
+        moved[drag.index] = {
+          x: drag.start.x + Math.round(p.x - drag.x),
+          y: drag.start.y + Math.round(p.y - drag.y),
+        };
+
+        update();
+      };
+
+      canvas.onpointerup = canvas.onpointercancel = () => {
+        drag = null;
+      };
+
+      canvas.hidden = false;
+      outlines.hidden = false;
+      this.querySelector<HTMLElement>('[data-fallback]')!.hidden = true;
+      this.querySelector('fieldset')!.disabled = false;
+      update();
+    }
+  }
+
+  if (!customElements.get('gx-gba-windows')) customElements.define('gx-gba-windows', GbaWindows);
+</script>
+
+<style>
+  .windows-stage {
+    position: relative;
+    background: #111;
+  }
+
+  .windows-stage :is(img, canvas) {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin: 0;
+    image-rendering: pixelated;
+  }
+
+  .windows-stage [data-outlines] {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    image-rendering: auto;
+  }
+
+  .windows-stage [hidden] {
+    display: none;
+  }
+
+  .windows-controls {
+    margin-top: 1rem !important;
+  }
+
+  .windows-timeline {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .windows-timeline label {
+    flex: 1;
+  }
+
+  .gx-demo .windows-timeline button {
+    min-width: 4.5rem;
+  }
+
+  .windows-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1.5rem;
+    margin: 0.25rem 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.85rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .windows-legend li {
+    margin: 0;
+  }
+
+  .windows-legend span[data-rect] {
+    color: var(--muted-foreground);
+  }
+
+  .windows-swatch {
+    display: inline-block;
+    width: 0.9rem;
+    height: 0;
+    margin-right: 0.4rem;
+    vertical-align: 0.25rem;
+    border-top: 3px solid #ffdc70;
+  }
+
+  .windows-swatch-1 {
+    border-top: 3px dashed #7fb0ff;
+  }
+
+  .windows-stage [data-frame] {
+    touch-action: none;
+  }
+
+  .windows-toggles {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.9rem;
+  }
+
+  .windows-toggles span {
+    font-size: 0.875rem;
+    margin-right: 0.25rem;
+  }
+
+  .gx-demo .windows-toggles [aria-pressed='true'] {
+    border-color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 14%, var(--background));
+    color: var(--foreground);
+  }
+
+  .windows-registers {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.75rem;
+    margin: 0.75rem 0 0 !important;
+  }
+
+  .windows-registers :global(code) {
+    font-size: 0.75rem;
+    color: var(--muted-foreground);
+  }
+</style>

@@ -1,0 +1,220 @@
+---
+import '../../styles/gx-demos.css';
+const start = [1, 1, 2, 2, 1, 1, 2, 2];
+---
+
+<gx-gba-byte-write class="gx-demo not-prose">
+  <div
+    class="byte-memory"
+    role="group"
+    aria-label="8 bytes of VRAM, grouped into halfwords. Pick a pixel to write to."
+  >
+    {
+      [0, 2, 4, 6].map(a => (
+        <div class="byte-halfword">
+          <span class="byte-address">{`0x0600000${a}`}</span>
+          <div class="byte-pair">
+            {[a, a + 1].map(i => (
+              <button
+                type="button"
+                class="byte-pixel"
+                data-pixel={i}
+                data-color={start[i]}
+                aria-pressed={i === 5}
+                aria-label={`Pixel ${i} at 0x0600000${i}`}
+              >
+                <code data-value>{`0${start[i]}`}</code>
+              </button>
+            ))}
+          </div>
+        </div>
+      ))
+    }
+  </div>
+  <fieldset disabled class="byte-actions">
+    <span class="byte-prompt">Write <code>0x03</code> with</span>
+    <button type="button" data-write="byte"><code>strb</code></button>
+    <button type="button" data-write="halfword"><code>ldrh</code> + <code>strh</code></button>
+    <button type="button" class="byte-reset" data-reset>Reset</button>
+  </fieldset>
+  <p class="gx-demo-status" data-result aria-live="polite">Pick a pixel, then write palette index 3 to it.</p>
+</gx-gba-byte-write>
+
+<script>
+  import { hex } from './gba-bitmap';
+
+  const START = [1, 1, 2, 2, 1, 1, 2, 2];
+  const VALUE = 3;
+
+  class GbaByteWrite extends HTMLElement {
+    connectedCallback() {
+      let bytes = [...START];
+      let target = 5;
+
+      const render = (changed: number[] = []) => {
+        this.querySelectorAll<HTMLButtonElement>('[data-pixel]').forEach((pixel, i) => {
+          pixel.setAttribute('aria-pressed', String(i === target));
+          pixel.toggleAttribute('data-changed', changed.includes(i));
+          pixel.dataset.color = String(bytes[i]);
+          pixel.querySelector('[data-value]')!.textContent = bytes[i].toString(16).padStart(2, '0');
+        });
+      };
+
+      const halfword = (address: number) => bytes[address & ~1] | (bytes[address | 1] << 8);
+
+      const write = (mode: string) => {
+        const address = 0x06000000 + target;
+        const even = target & ~1;
+        const before = [...bytes];
+        let text: string;
+
+        if (mode === 'byte') {
+          // VRAM ignores the byte lanes: the value lands in both halves of the halfword.
+          bytes[even] = bytes[even + 1] = VALUE;
+          text = `strb wrote ${hex(VALUE, 2)} to ${hex(address)}, but VRAM stored ${hex(halfword(even), 4)} at ${hex(0x06000000 + even)}. Both pixel bytes were written.`;
+        } else {
+          const old = halfword(even);
+          bytes[target] = VALUE;
+          text = `The CPU read ${hex(old, 4)}, replaced ${target & 1 ? 'the upper' : 'the lower'} byte and wrote ${hex(halfword(even), 4)} back. Pixel ${target} is now ${VALUE}; its neighbor kept its value.`;
+        }
+
+        render(bytes.map((b, i) => (b !== before[i] ? i : -1)).filter(i => i >= 0));
+        this.querySelector('[data-result]')!.textContent = text;
+      };
+
+      this.querySelectorAll<HTMLButtonElement>('[data-pixel]').forEach(pixel => {
+        pixel.onclick = () => {
+          target = Number(pixel.dataset.pixel);
+          render();
+        };
+      });
+
+      this.querySelectorAll<HTMLButtonElement>('[data-write]').forEach(
+        button => (button.onclick = () => write(button.dataset.write!)),
+      );
+
+      this.querySelector<HTMLButtonElement>('[data-reset]')!.onclick = () => {
+        bytes = [...START];
+        render();
+        this.querySelector('[data-result]')!.textContent = 'Pick a pixel, then write palette index 3 to it.';
+      };
+
+      this.querySelector('fieldset')!.disabled = false;
+      render();
+    }
+  }
+
+  if (!customElements.get('gx-gba-byte-write')) customElements.define('gx-gba-byte-write', GbaByteWrite);
+</script>
+
+<style>
+  .byte-memory {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.75rem;
+    max-width: 34rem;
+    margin-inline: auto;
+  }
+
+  .byte-halfword {
+    display: grid;
+    gap: 0.3rem;
+    min-width: 0;
+  }
+
+  .byte-address {
+    font:
+      0.7rem ui-monospace,
+      monospace;
+    color: var(--muted-foreground);
+    text-align: center;
+  }
+
+  .byte-pair {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    padding: 3px;
+    gap: 3px;
+    border: 1px solid var(--border);
+    border-radius: 0.4rem;
+  }
+
+  .gx-demo .byte-pixel {
+    display: grid;
+    place-items: center;
+    aspect-ratio: 1;
+    padding: 0;
+    border: 0;
+    border-radius: 0.25rem;
+    transition: background 0.2s;
+  }
+
+  .gx-demo .byte-pixel[data-color='1'] {
+    background: var(--gx-cell-blue);
+  }
+
+  .gx-demo .byte-pixel[data-color='2'] {
+    background: var(--gx-cell-gold);
+  }
+
+  .gx-demo .byte-pixel[data-color='3'] {
+    background: var(--gx-cell-red);
+  }
+
+  .gx-demo .byte-pixel[aria-pressed='true'] {
+    outline: 2px solid var(--foreground);
+    outline-offset: 2px;
+  }
+
+  .byte-pixel code {
+    font-size: 0.8rem;
+    color: var(--foreground);
+  }
+
+  .byte-pixel[data-changed] code {
+    font-weight: 700;
+  }
+
+  .byte-pixel[data-changed] {
+    animation: byte-flash 0.6s;
+  }
+
+  @keyframes byte-flash {
+    from {
+      filter: brightness(1.6);
+    }
+  }
+
+  .byte-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 1.25rem !important;
+  }
+
+  .byte-prompt {
+    font-size: 0.875rem;
+    margin-right: 0.25rem;
+  }
+
+  .byte-actions code {
+    font-size: 0.8rem;
+  }
+
+  .gx-demo .byte-reset {
+    margin-left: auto;
+    border-color: transparent;
+    color: var(--muted-foreground);
+  }
+
+  @media (max-width: 480px) {
+    .byte-memory {
+      gap: 0.4rem;
+    }
+
+    .byte-address {
+      font-size: 0.6rem;
+    }
+  }
+</style>

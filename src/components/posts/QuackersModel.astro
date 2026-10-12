@@ -1,0 +1,45 @@
+---
+import '../../styles/gx-demos.css';
+---
+<gx-quackers-model class="gx-demo not-prose">
+  <fieldset disabled class="model-toolbar">
+    <div class="model-states" aria-label="Donald's pose">
+      <button type="button" data-pose="before" aria-pressed="true">Old Gecko</button>
+      <button type="button" data-pose="after" aria-pressed="false">Fixed</button>
+    </div>
+    <label><input type="checkbox" data-wire /> Wireframe</label>
+    <button type="button" data-reset>Reset view</button>
+  </fieldset>
+  <div class="model-stage">
+    <img data-fallback src="/images/quackers/before.webp" alt="Donald with stretched feet and a distorted body before the ARAM alignment fix." width="2560" height="1792" loading="lazy" />
+    <canvas hidden tabindex="0" role="img" aria-label="Donald's model before the fix. Drag to orbit, or use arrow keys. Use the Old Gecko and Fixed buttons to compare."></canvas>
+  </div>
+  <fieldset disabled class="model-controls">
+    <label>Turn <input data-yaw type="range" min="-180" max="180" value="-35" aria-label="Rotate model horizontally" /></label>
+    <label>Zoom <input data-zoom type="range" min="70" max="180" value="100" aria-label="Model zoom percentage" /></label>
+  </fieldset>
+  <p class="model-caption" data-caption>Drag to rotate Donald, or focus the model and use the arrow keys.</p>
+  <noscript><p>The screenshot shows the damaged pose. The comparison above includes the corrected frame.</p></noscript>
+</gx-quackers-model>
+<script>
+  import { mountQuackersModel } from './quackers-model';
+  class QuackersModel extends HTMLElement {
+    cleanup?: () => void;
+    connectedCallback() { mountQuackersModel(this).then(cleanup => this.cleanup = cleanup); }
+    disconnectedCallback() { this.cleanup?.(); }
+  }
+  if (!customElements.get('gx-quackers-model')) customElements.define('gx-quackers-model', QuackersModel);
+</script>
+<style>
+  .model-toolbar { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; justify-content: space-between; margin-bottom: 1rem !important; }
+  .model-states { display: flex; gap: .35rem; }
+  .model-states [aria-pressed="true"] { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 14%, var(--background)); color: var(--foreground); }
+  .model-stage { position: relative; background: var(--muted); overflow: hidden; }
+  .model-stage img { display: block; width: 100%; height: auto; margin: 0; }
+  .model-stage canvas { display: block; width: 100%; height: 440px; cursor: grab; touch-action: pan-y; }
+  .model-stage canvas:active { cursor: grabbing; }
+  .model-stage [hidden] { display: none; }
+  .model-controls { display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; margin-top: 1rem !important; }
+  .model-caption { font-size: .8rem; text-align: center; color: var(--muted-foreground); margin-bottom: 0 !important; }
+  @media(max-width: 540px) { .model-stage canvas { height: 370px; } .model-toolbar { gap: .5rem; } .model-toolbar label { font-size: .8rem; } }
+</style>

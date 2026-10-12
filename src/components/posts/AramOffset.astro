@@ -1,0 +1,70 @@
+---
+import '../../styles/gx-demos.css';
+const hex = (n: number) => n.toString(16).padStart(2, '0');
+---
+<gx-aram-offset class="gx-demo not-prose">
+  <fieldset disabled>
+    <label>Record offset inside the block: <output data-offset>8 bytes</output>
+      <input type="range" min="0" max="31" value="8" aria-label="Record offset inside the 32-byte block" />
+    </label>
+    <div class="aram-presets" aria-label="Choose an alignment example">
+      {[0, 8, 16, 24].map(n => <button type="button" data-offset-preset={n} aria-pressed={n === 8}>{n === 0 ? 'Aligned' : `+${n} bytes`}</button>)}
+    </div>
+  </fieldset>
+  <p class="aram-request">Request <code data-request>0x7888</code> · transfer 64 bytes · keep 24 bytes</p>
+  <div class="aram-cases">
+    {[true, false].map(fixed => <section class={fixed ? 'aram-correct' : 'aram-broken'} data-case={fixed ? 'fixed' : 'broken'}>
+      <h3>{fixed ? 'Aligned DMA' : 'Old Gecko'}</h3>
+      <p class="aram-source">DMA starts at <code data-start>{fixed ? '0x7880' : '0x7888'}</code></p>
+      <p class="aram-source">Then the callback skips <span data-skip>8</span> bytes.</p>
+      <div class="aram-bytes" aria-hidden="true">{Array.from({length: 24}, (_, i) => <span>{hex(i + (fixed ? 8 : 16))}</span>)}</div>
+      <p class="aram-range" data-range>{fixed ? '0x7888-0x789f' : '0x7890-0x78a7'}</p>
+    </section>)}
+  </div>
+  <p class="aram-note">Each cell labels a source byte's offset from <code>0x7880</code>, not its contents.</p>
+</gx-aram-offset>
+<script>
+  class AramOffset extends HTMLElement {
+    connectedCallback() {
+      const slider = this.querySelector<HTMLInputElement>('input')!;
+      const address = (n: number) => `0x${(0x7880 + n).toString(16)}`;
+      const draw = () => {
+        const n = Number(slider.value);
+        this.querySelector('[data-offset]')!.textContent = `${n} bytes`;
+        this.querySelector('[data-request]')!.textContent = address(n);
+        this.querySelectorAll<HTMLElement>('[data-case]').forEach(panel => {
+          const fixed = panel.dataset.case === 'fixed';
+          const start = fixed ? 0 : n;
+          panel.querySelector('[data-start]')!.textContent = address(start);
+          panel.querySelector('[data-skip]')!.textContent = String(n);
+          panel.querySelectorAll('.aram-bytes span').forEach((cell, i) => cell.textContent = (start + n + i).toString(16).padStart(2, '0'));
+          panel.querySelector('[data-range]')!.textContent = `${address(start + n)}-${address(start + n + 23)}`;
+        });
+        this.querySelectorAll<HTMLButtonElement>('button').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.offsetPreset) === n)));
+      };
+      slider.oninput = draw;
+      this.querySelectorAll<HTMLButtonElement>('button').forEach(b => b.onclick = () => { slider.value = b.dataset.offsetPreset!; draw(); });
+      this.querySelector('fieldset')!.disabled = false;
+      draw();
+    }
+  }
+  if (!customElements.get('gx-aram-offset')) customElements.define('gx-aram-offset', AramOffset);
+</script>
+<style>
+  .aram-presets { display: flex; flex-wrap: wrap; gap: .4rem; }
+  .aram-presets button[aria-pressed="true"] { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 14%, var(--background)); color: var(--foreground); }
+  .aram-request { font-size: .8rem; color: var(--muted-foreground); padding: .75rem 0; border-bottom: 1px solid var(--border); }
+  .aram-cases { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+  h3 { font-size: 1rem; margin: .2rem 0 .75rem; font-weight: 650; }
+  .aram-source { font-size: .8rem; }
+  .aram-bytes { display: grid; grid-template-columns: repeat(8, minmax(0,1fr)); gap: 3px; margin-top: 1rem; }
+  .aram-bytes span { display: grid; place-items: center; aspect-ratio: 1; font: .75rem ui-monospace, monospace; background: var(--gx-cell-blue); }
+  .aram-broken .aram-bytes span { background: var(--gx-cell-red); }
+  .aram-range { font: .8rem ui-monospace, monospace; text-align: center; }
+  .aram-note { font-size: .75rem; color: var(--muted-foreground); margin-bottom: 0 !important; }
+  @media(max-width: 540px) {
+    .aram-cases { grid-template-columns: 1fr; gap: 1rem; }
+    .aram-bytes { grid-template-columns: repeat(12, minmax(0,1fr)); }
+    .aram-request { line-height: 1.8; }
+  }
+</style>

@@ -1,0 +1,400 @@
+---
+import '../../styles/gx-demos.css';
+---
+
+<gx-gba-pixel-inspector class="gx-demo not-prose">
+  <fieldset disabled class="pixel-sources" aria-label="Captured frame">
+    <button type="button" data-source="4" aria-pressed="true">OpenLara · Mode 4</button>
+    <button type="button" data-source="3" aria-pressed="false">GBA Video · Mode 3</button>
+  </fieldset>
+  <div class="pixel-work">
+    <div class="pixel-stage">
+      <img
+        data-fallback
+        src="/images/gba-bitmap/openlara.png"
+        width="240"
+        height="160"
+        alt="Lara in the Caves level of OpenLara, captured from Sly in mode 4."
+        loading="lazy"
+      />
+      <canvas
+        data-frame
+        width="240"
+        height="160"
+        tabindex="0"
+        role="img"
+        aria-label="Captured frame. Click a pixel or use the arrow keys to follow it through VRAM."
+        hidden></canvas>
+      <span class="pixel-cursor" data-cursor hidden aria-hidden="true"></span>
+    </div>
+    <fieldset disabled class="pixel-palette" data-palette-panel>
+      <canvas
+        data-palette
+        width="256"
+        height="256"
+        tabindex="0"
+        role="img"
+        aria-label="The 256-entry background palette. Click an entry to highlight the pixels that use it."
+      >
+      </canvas>
+      <p data-usage>This frame uses – of the 256 palette entries. Unused entries are drawn smaller.</p>
+      <label><input type="checkbox" data-highlight /> Highlight pixels using this entry</label>
+    </fieldset>
+    <p class="pixel-direct" data-direct hidden>
+      The halfword is the color itself, so there's no palette to look up.
+    </p>
+  </div>
+  <ol class="pixel-chain" data-chain aria-live="polite">
+    <li><span>Pixel</span><b data-field="pixel">(120, 80)</b></li>
+    <li>
+      <span data-field="vram-label">VRAM byte</span><b data-field="vram">–</b><small data-field="vram-sum">
+      </small>
+    </li>
+    <li data-palette-row>
+      <span>Palette index</span><b data-field="index">–</b><small data-field="index-note"></small>
+    </li>
+    <li data-palette-row>
+      <span>Palette entry</span><b data-field="entry">–</b><small data-field="entry-sum"></small>
+    </li>
+    <li><span>Color</span><b data-field="color">–</b><small data-field="channels"></small></li>
+  </ol>
+</gx-gba-pixel-inspector>
+
+<script>
+  import {
+    WIDTH,
+    HEIGHT,
+    loadFrame,
+    loadDirectFrame,
+    hex,
+    thousands,
+    rgb,
+    channels,
+    canvasPoint,
+    arrowMoves,
+    type Frame,
+  } from './gba-bitmap';
+
+  class GbaPixelInspector extends HTMLElement {
+    async connectedCallback() {
+      let frame: Frame, direct: Uint16Array;
+
+      try {
+        [frame, direct] = await Promise.all([loadFrame(), loadDirectFrame()]);
+      } catch {
+        return;
+      }
+
+      if (!this.isConnected) return;
+
+      const canvas = this.querySelector<HTMLCanvasElement>('[data-frame]')!;
+      const paletteCanvas = this.querySelector<HTMLCanvasElement>('[data-palette]')!;
+      const highlight = this.querySelector<HTMLInputElement>('[data-highlight]')!;
+      const { indices, palette } = frame;
+      const colors = Array.from(palette, rgb);
+      const used = new Set(indices);
+      let mode = 4;
+      let point = { x: 120, y: 80 };
+      let entry = indices[80 * WIDTH + 120];
+
+      const field = (name: string, html: string) => {
+        this.querySelector(`[data-field="${name}"]`)!.innerHTML = html;
+      };
+
+      const swatch = (color: number[]) =>
+        `<span class="pixel-swatch" style="background: rgb(${color.join(',')})"></span>`;
+
+      const drawFrame = () => {
+        const context = canvas.getContext('2d')!;
+        const image = context.createImageData(WIDTH, HEIGHT);
+
+        for (let i = 0; i < WIDTH * HEIGHT; i++) {
+          if (mode === 3) {
+            image.data.set([...rgb(direct[i]), 255], i * 4);
+            continue;
+          }
+
+          const c = colors[indices[i]];
+          const dim = highlight.checked && indices[i] !== entry;
+          image.data.set(dim ? [c[0] * 0.2, c[1] * 0.2, c[2] * 0.2, 255] : [...c, 255], i * 4);
+        }
+
+        context.putImageData(image, 0, 0);
+      };
+
+      const drawPalette = () => {
+        const context = paletteCanvas.getContext('2d')!;
+        context.clearRect(0, 0, 256, 256);
+
+        for (let i = 0; i < 256; i++) {
+          const x = (i % 16) * 16;
+          const y = Math.floor(i / 16) * 16;
+          context.fillStyle = `rgb(${colors[i].join(',')})`;
+
+          // Entries this frame doesn't use are drawn smaller.
+          if (used.has(i)) context.fillRect(x + 1, y + 1, 14, 14);
+          else context.fillRect(x + 5, y + 5, 6, 6);
+        }
+
+        const x = (entry % 16) * 16;
+        const y = Math.floor(entry / 16) * 16;
+        context.lineWidth = 2;
+        context.strokeStyle = '#ffdc70';
+        context.strokeRect(x + 1, y + 1, 14, 14);
+      };
+
+      const update = () => {
+        const offset = point.y * WIDTH + point.x;
+        field('pixel', `(${point.x}, ${point.y})`);
+
+        if (mode === 3) {
+          const color = direct[offset];
+          const [r, g, b] = channels(color);
+          field('vram-label', 'VRAM halfword');
+          field('vram', `<code>${hex(0x06000000 + offset * 2)}</code>`);
+          field('vram-sum', `0x06000000 + 2 × (${point.y} × 240 + ${point.x})`);
+          field('color', `${swatch(rgb(color))}<code>${hex(color, 4)}</code>`);
+          field('channels', `red ${r}, green ${g}, blue ${b}`);
+        } else {
+          const color = palette[entry];
+          const [r, g, b] = channels(color);
+          const pixelEntry = indices[offset];
+          field('vram-label', 'VRAM byte');
+          field('vram', `<code>${hex(0x06000000 + offset)}</code>`);
+          field('vram-sum', `0x06000000 + ${point.y} × 240 + ${point.x}`);
+          field('index', `<code>${hex(pixelEntry, 2)}</code> (${pixelEntry})`);
+          field(
+            'index-note',
+            pixelEntry === entry ? 'the byte stored there' : `showing entry ${entry} instead`,
+          );
+
+          field('entry', `<code>${hex(0x05000000 + entry * 2)}</code>`);
+          field('entry-sum', `0x05000000 + 2 × ${entry}`);
+          field('color', `${swatch(colors[entry])}<code>${hex(color, 4)}</code>`);
+          field('channels', `red ${r}, green ${g}, blue ${b}`);
+          drawPalette();
+        }
+
+        const cursor = this.querySelector<HTMLElement>('[data-cursor]')!;
+        cursor.hidden = false;
+        cursor.style.left = `${((point.x + 0.5) / WIDTH) * 100}%`;
+        cursor.style.top = `${((point.y + 0.5) / HEIGHT) * 100}%`;
+        drawFrame();
+      };
+
+      const pick = (x: number, y: number) => {
+        point = { x: Math.max(0, Math.min(WIDTH - 1, x)), y: Math.max(0, Math.min(HEIGHT - 1, y)) };
+        entry = indices[point.y * WIDTH + point.x];
+        update();
+      };
+
+      const setMode = (next: number) => {
+        mode = next;
+        this.querySelectorAll<HTMLButtonElement>('[data-source]').forEach(b =>
+          b.setAttribute('aria-pressed', String(Number(b.dataset.source) === mode)),
+        );
+
+        this.querySelectorAll<HTMLElement>('[data-palette-row], [data-palette-panel]').forEach(
+          e => (e.hidden = mode === 3),
+        );
+
+        this.querySelector<HTMLElement>('[data-direct]')!.hidden = mode !== 3;
+        update();
+      };
+
+      canvas.onclick = event => {
+        const p = canvasPoint(canvas, event);
+        pick(p.x, p.y);
+      };
+
+      canvas.onkeydown = event => {
+        const m = arrowMoves[event.key];
+        if (!m) return;
+
+        event.preventDefault();
+        pick(point.x + m[0], point.y + m[1]);
+      };
+
+      paletteCanvas.onclick = event => {
+        const p = canvasPoint(paletteCanvas, event, 16, 16);
+        entry = p.y * 16 + p.x;
+        update();
+      };
+
+      paletteCanvas.onkeydown = event => {
+        const m = arrowMoves[event.key];
+        if (!m) return;
+
+        event.preventDefault();
+        entry = (entry + m[0] + m[1] * 16 + 256) % 256;
+        update();
+      };
+
+      highlight.onchange = drawFrame;
+      this.querySelectorAll<HTMLButtonElement>('[data-source]').forEach(
+        b => (b.onclick = () => setMode(Number(b.dataset.source))),
+      );
+
+      this.querySelector('[data-usage]')!.textContent =
+        `This frame uses ${used.size} of the 256 palette entries. Unused entries are drawn smaller.`;
+      this.querySelector('[data-direct]')!.textContent =
+        `The halfword is the color itself, so there's no palette to look up. This frame uses ${thousands(new Set(direct).size)} different colors.`;
+      canvas.hidden = false;
+      this.querySelector<HTMLElement>('[data-fallback]')!.hidden = true;
+      this.querySelectorAll('fieldset').forEach(f => (f.disabled = false));
+      update();
+    }
+  }
+
+  if (!customElements.get('gx-gba-pixel-inspector'))
+    customElements.define('gx-gba-pixel-inspector', GbaPixelInspector);
+</script>
+
+<style>
+  .pixel-sources {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem !important;
+  }
+
+  .pixel-sources [aria-pressed='true'] {
+    border-color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 14%, var(--background));
+    color: var(--foreground);
+  }
+
+  .pixel-work {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    gap: 1.25rem;
+    align-items: start;
+  }
+
+  .pixel-stage {
+    position: relative;
+    background: #111;
+  }
+
+  .pixel-stage :is(img, canvas) {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin: 0;
+    image-rendering: pixelated;
+    cursor: crosshair;
+  }
+
+  .pixel-stage [hidden] {
+    display: none;
+  }
+
+  .pixel-stage canvas:focus-visible,
+  .pixel-palette canvas:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 3px;
+  }
+
+  .pixel-cursor {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border: 2px solid #ffdc70;
+    box-shadow: 0 0 0 1px #111;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+
+  .pixel-palette canvas {
+    display: block;
+    width: 100%;
+    max-width: 20rem;
+    height: auto;
+    aspect-ratio: 1;
+    image-rendering: pixelated;
+    cursor: pointer;
+    background: #111;
+  }
+
+  .pixel-palette p {
+    margin: 0.75rem 0 0.5rem !important;
+    font-size: 0.8rem;
+    color: var(--muted-foreground);
+  }
+
+  .pixel-palette label {
+    font-size: 0.85rem;
+  }
+
+  .pixel-palette[hidden],
+  .pixel-direct[hidden] {
+    display: none;
+  }
+
+  .pixel-direct {
+    margin: 0 !important;
+    font-size: 0.875rem;
+  }
+
+  .pixel-chain {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+    gap: 0.75rem 0;
+    margin: 1.25rem 0 0;
+    padding: 0.75rem 0 0;
+    border-top: 1px solid var(--border);
+    list-style: none;
+  }
+
+  .pixel-chain li {
+    display: grid;
+    align-content: start;
+    gap: 0.1rem;
+    margin: 0;
+    padding: 0 1rem 0 0;
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pixel-chain li[hidden] {
+    display: none;
+  }
+
+  .pixel-chain span {
+    font-size: 0.75rem;
+    color: var(--muted-foreground);
+  }
+
+  .pixel-chain b {
+    font-weight: 600;
+  }
+
+  .pixel-chain small {
+    font-size: 0.72rem;
+    color: var(--muted-foreground);
+  }
+
+  .pixel-chain code {
+    font-size: 0.8rem;
+  }
+
+  .pixel-chain :global(.pixel-swatch) {
+    display: inline-block;
+    width: 0.9rem;
+    height: 0.9rem;
+    margin-right: 0.35rem;
+    vertical-align: -0.15rem;
+    border: 1px solid var(--border);
+  }
+
+  @media (max-width: 560px) {
+    .pixel-work {
+      grid-template-columns: 1fr;
+    }
+
+    .pixel-palette canvas {
+      max-width: none;
+    }
+  }
+</style>

@@ -1,0 +1,195 @@
+---
+import '../../styles/gx-demos.css';
+---
+
+<gx-gba-affine-sprite class="gx-demo not-prose">
+  <div class="sprite-stage">
+    <canvas
+      data-sprite
+      width="160"
+      height="160"
+      role="img"
+      aria-label="Wario's sprite, rotated and scaled, with the area it may draw in outlined."></canvas>
+  </div>
+  <fieldset disabled class="sprite-controls">
+    <label>
+      Rotation: <output data-angle-value>0</output>°
+      <input data-angle type="range" min="-180" max="180" step="1" value="30" aria-label="Rotation in degrees" />
+    </label>
+    <label>
+      Magnification: <output data-scale-value>1</output>×
+      <input data-scale type="range" min="-1" max="2" step="0.05" value="1.5" aria-label="Magnification" />
+    </label>
+    <label class="sprite-check">
+      <input type="checkbox" data-double checked /> Double size</label
+    >
+  </fieldset>
+  <div class="sprite-readout" data-readout aria-live="polite"></div>
+</gx-gba-affine-sprite>
+
+<script>
+  import { loadCapture, color, type Capture } from './gba-video';
+  import { rotationMatrix, fixed8, halfword } from './gba-affine';
+
+  const SIZE = 160;
+
+  class GbaAffineSprite extends HTMLElement {
+    async connectedCallback() {
+      let capture: Capture;
+
+      try {
+        capture = await loadCapture('wario-land-4-vortex');
+      } catch {
+        return;
+      }
+
+      if (!this.isConnected) return;
+
+      // OAM entry 0 is Wario: 64 × 64 pixels with 4 bits per pixel.
+      const [a0, , a2] = capture.oam.subarray(0, 3);
+      const w = 64;
+      const h = 64;
+      const oneDimensional = Boolean(capture.dispcnt & 0x40);
+      const rowTiles = oneDimensional ? w / 8 : 32;
+      const bank = 256 + (a2 >> 12) * 16;
+
+      const texel = (x: number, y: number) => {
+        const address = 0x10000 + (a2 & 1023) * 32 + ((y >> 3) * rowTiles + (x >> 3)) * 32;
+        const value = (capture.vram[address + (y & 7) * 4 + ((x & 7) >> 1)] >> ((x & 1) * 4)) & 15;
+        return value ? bank + value : -1;
+      };
+
+      const canvas = this.querySelector<HTMLCanvasElement>('[data-sprite]')!;
+      const angleInput = this.querySelector<HTMLInputElement>('[data-angle]')!;
+      const scaleInput = this.querySelector<HTMLInputElement>('[data-scale]')!;
+      const doubleInput = this.querySelector<HTMLInputElement>('[data-double]')!;
+
+      const draw = () => {
+        const degrees = Number(angleInput.value);
+        const scale = 2 ** Number(scaleInput.value);
+        const double = doubleInput.checked;
+        const m = rotationMatrix(degrees, scale);
+        const [bw, bh] = double ? [2 * w, 2 * h] : [w, h];
+        const left = (SIZE - bw) / 2;
+        const top = (SIZE - bh) / 2;
+        const image = new ImageData(SIZE, SIZE);
+
+        // Everything outside the area the sprite may draw in stays dark.
+        for (let i = 0; i < SIZE * SIZE; i++) image.data.set([24, 24, 28, 255], i * 4);
+
+        for (let row = 0; row < bh; row++)
+          for (let col = 0; col < bw; col++) {
+            const i = ((top + row) * SIZE + left + col) * 4;
+            image.data.set(((col >> 2) + (row >> 2)) % 2 ? [62, 62, 66, 255] : [48, 48, 52, 255], i);
+            // Measured from the center of the area, then moved to the sprite's center.
+            const dx = col - bw / 2;
+            const dy = row - bh / 2;
+            const tx = ((m.pa * dx + m.pb * dy) >> 8) + w / 2;
+            const ty = ((m.pc * dx + m.pd * dy) >> 8) + h / 2;
+            if (tx < 0 || ty < 0 || tx >= w || ty >= h) continue;
+            const index = texel(tx, ty);
+            if (index >= 0) image.data.set([...color(capture, index), 255], i);
+          }
+
+        canvas.getContext('2d')!.putImageData(image, 0, 0);
+        this.querySelector('[data-angle-value]')!.textContent = String(degrees).replace('-', '−');
+        this.querySelector('[data-scale-value]')!.textContent = scale.toFixed(2);
+
+        const attr0 = (a0 & ~0x300) | 0x100 | (double ? 0x200 : 0);
+        this.querySelector('[data-readout]')!.innerHTML = `
+          <p>Attribute 0 is <code>${halfword(attr0)}</code>, so the sprite draws in a ${bw} × ${bh} area. Matrix 0:</p>
+          <table>
+            <thead><tr><th>Parameter</th><th>Address</th><th>Value</th><th>Written as</th></tr></thead>
+            <tbody>
+              ${(['pa', 'pb', 'pc', 'pd'] as const)
+                .map(
+                  (k, n) =>
+                    `<tr><th>${k.toUpperCase()}</th><td><code>0x0700${(6 + n * 8).toString(16).padStart(4, '0')}</code></td><td>${fixed8(m[k])}</td><td>${halfword(m[k])}</td></tr>`,
+                )
+                .join('')}
+            </tbody>
+          </table>`;
+      };
+
+      angleInput.oninput = scaleInput.oninput = doubleInput.onchange = draw;
+      this.querySelector('fieldset')!.disabled = false;
+      draw();
+    }
+  }
+
+  if (!customElements.get('gx-gba-affine-sprite'))
+    customElements.define('gx-gba-affine-sprite', GbaAffineSprite);
+</script>
+
+<style>
+  .sprite-stage {
+    display: flex;
+    justify-content: center;
+    background: #18181c;
+  }
+
+  .sprite-stage canvas {
+    display: block;
+    width: min(100%, 320px);
+    height: auto;
+    image-rendering: pixelated;
+  }
+
+  .sprite-controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem 1.5rem;
+    align-items: end;
+    margin-top: 1rem !important;
+  }
+
+  .sprite-check {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .sprite-readout {
+    margin-top: 1rem;
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .sprite-readout :global(p) {
+    margin: 0 0 0.5rem !important;
+  }
+
+  .sprite-readout :global(table) {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .sprite-readout :global(th),
+  .sprite-readout :global(td) {
+    padding: 0.3rem 0.5rem 0.3rem 0;
+    text-align: left;
+    border-top: 1px solid var(--border);
+    font-weight: 400;
+  }
+
+  .sprite-readout :global(thead th) {
+    border-top: 0;
+    color: var(--muted-foreground);
+    font-size: 0.8rem;
+  }
+
+  .sprite-readout :global(tbody th) {
+    color: var(--muted-foreground);
+  }
+
+  .sprite-readout :global(td:last-child) {
+    font-family: ui-monospace, monospace;
+    font-size: 0.8rem;
+  }
+
+  @media (max-width: 560px) {
+    .sprite-controls {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

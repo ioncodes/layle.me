@@ -1,0 +1,281 @@
+---
+import '../../styles/gx-demos.css';
+---
+
+<gx-gba-map-viewer class="gx-demo not-prose">
+  <fieldset disabled class="map-toolbar" aria-label="Background">
+    {
+      [0, 1, 2, 3].map(i => (
+        <button type="button" data-bg={i} aria-pressed={i === 1}>
+          BG{i}
+        </button>
+      ))
+    }
+  </fieldset>
+  <div class="map-views">
+    <figure>
+      <canvas
+        data-map
+        width="256"
+        height="256"
+        tabindex="0"
+        role="img"
+        aria-label="The whole background map. Click a tile or use the arrow keys to inspect its map entry."
+      >
+      </canvas>
+      <figcaption data-map-label>BG1 map · 256 × 256 pixels</figcaption>
+    </figure>
+    <figure>
+      <canvas
+        data-screen
+        width="240"
+        height="160"
+        role="img"
+        aria-label="The part of the map that's on screen after scrolling."></canvas>
+      <figcaption>On screen, without the other layers</figcaption>
+    </figure>
+  </div>
+  <fieldset disabled class="gx-controls map-scroll">
+    <label>
+      Horizontal scroll: <output data-hofs-value>0</output>
+      <input data-hofs type="range" min="0" max="255" value="0" aria-label="Horizontal scroll offset" />
+    </label>
+    <label>
+      Vertical scroll: <output data-vofs-value>0</output>
+      <input data-vofs type="range" min="0" max="255" value="0" aria-label="Vertical scroll offset" />
+    </label>
+  </fieldset>
+  <div class="map-fields" data-fields aria-live="polite"></div>
+  <label class="map-copies">
+    <input type="checkbox" data-copies checked /> Highlight every entry that uses the same tile</label
+  >
+</gx-gba-map-viewer>
+
+<script>
+  import { WIDTH, HEIGHT, hex, bitStrip } from './gba-bitmap';
+
+  import {
+    loadCapture,
+    background,
+    mapEntry,
+    mapPixel,
+    layer,
+    paint,
+    checker,
+    color,
+    type Capture,
+    type Background,
+  } from './gba-video';
+
+  class GbaMapViewer extends HTMLElement {
+    async connectedCallback() {
+      let capture: Capture;
+
+      try {
+        capture = await loadCapture('shaman-king');
+      } catch {
+        return;
+      }
+
+      if (!this.isConnected) return;
+
+      const mapCanvas = this.querySelector<HTMLCanvasElement>('[data-map]')!;
+      const screen = this.querySelector<HTMLCanvasElement>('[data-screen]')!;
+      const hofs = this.querySelector<HTMLInputElement>('[data-hofs]')!;
+      const vofs = this.querySelector<HTMLInputElement>('[data-vofs]')!;
+      const copies = this.querySelector<HTMLInputElement>('[data-copies]')!;
+      let bg: Background;
+      let base: ImageData;
+      let cell = { x: 0, y: 0 };
+
+      const drawMap = () => {
+        mapCanvas.width = bg.width;
+        mapCanvas.height = bg.height;
+        base = new ImageData(bg.width, bg.height);
+        checker(base);
+        for (let y = 0; y < bg.height; y++)
+          for (let x = 0; x < bg.width; x++) {
+            const index = mapPixel(capture, bg, x, y);
+            if (index >= 0) base.data.set([...color(capture, index), 255], (y * bg.width + x) * 4);
+          }
+      };
+
+      const update = () => {
+        const h = Number(hofs.value);
+        const v = Number(vofs.value);
+        const context = mapCanvas.getContext('2d')!;
+        this.querySelector('[data-hofs-value]')!.textContent = String(h);
+        this.querySelector('[data-vofs-value]')!.textContent = String(v);
+        context.putImageData(base, 0, 0);
+        const entry = mapEntry(capture, bg, cell.x, cell.y);
+
+        if (copies.checked) {
+          context.fillStyle = 'rgba(255, 220, 112, .35)';
+          for (let ty = 0; ty < bg.height / 8; ty++)
+            for (let tx = 0; tx < bg.width / 8; tx++) {
+              if (mapEntry(capture, bg, tx, ty).tile === entry.tile) context.fillRect(tx * 8, ty * 8, 8, 8);
+            }
+        }
+
+        context.lineWidth = 2;
+        context.strokeStyle = '#fff';
+
+        // The screen wraps around the edges of the map, so draw the viewport up to 4 times.
+        for (const dx of [0, -bg.width])
+          for (const dy of [0, -bg.height]) context.strokeRect(h + dx + 1, v + dy + 1, 238, 158);
+        context.strokeStyle = '#ffdc70';
+        context.strokeRect(cell.x * 8, cell.y * 8, 8, 8);
+        const image = new ImageData(240, 160);
+        checker(image);
+        paint(capture, image, layer(capture, bg, h, v));
+        screen.getContext('2d')!.putImageData(image, 0, 0);
+        this.querySelector('[data-fields]')!.innerHTML = bitStrip(
+          `Map entry at column ${cell.x}, row ${cell.y} · <code>${hex(0x06000000 + entry.address)}</code>`,
+          entry.raw,
+          [
+            { from: 0, to: 9, name: 'Tile', value: String(entry.tile) },
+            { from: 10, to: 10, name: 'Horizontal flip', value: entry.hflip ? 'on' : 'off' },
+            { from: 11, to: 11, name: 'Vertical flip', value: entry.vflip ? 'on' : 'off' },
+            { from: 12, to: 15, name: 'Palette bank', value: bg.bpp8 ? 'unused' : String(entry.bank) },
+          ],
+        );
+      };
+
+      const select = (index: number) => {
+        bg = background(capture, index);
+        this.querySelectorAll<HTMLButtonElement>('[data-bg]').forEach(b =>
+          b.setAttribute('aria-pressed', String(Number(b.dataset.bg) === index)),
+        );
+
+        hofs.max = String(bg.width - 1);
+        vofs.max = String(bg.height - 1);
+        hofs.value = String(bg.hofs);
+        vofs.value = String(bg.vofs);
+        cell = { x: (bg.hofs + WIDTH / 2) % bg.width >> 3, y: (bg.vofs + HEIGHT / 2) % bg.height >> 3 };
+        this.querySelector('[data-map-label]')!.textContent =
+          `BG${index} map · ${bg.width} × ${bg.height} pixels`;
+        drawMap();
+        update();
+      };
+
+      const pick = (canvas: HTMLCanvasElement, event: MouseEvent, offset: boolean) => {
+        const r = canvas.getBoundingClientRect();
+        let x = Math.floor(((event.clientX - r.left) / r.width) * canvas.width);
+        let y = Math.floor(((event.clientY - r.top) / r.height) * canvas.height);
+
+        if (offset) {
+          x = (x + Number(hofs.value)) % bg.width;
+          y = (y + Number(vofs.value)) % bg.height;
+        }
+
+        cell = { x: x >> 3, y: y >> 3 };
+        update();
+      };
+
+      mapCanvas.onclick = event => pick(mapCanvas, event, false);
+      screen.onclick = event => pick(screen, event, true);
+
+      mapCanvas.onkeydown = event => {
+        const moves: Record<string, [number, number]> = {
+          ArrowLeft: [-1, 0],
+          ArrowRight: [1, 0],
+          ArrowUp: [0, -1],
+          ArrowDown: [0, 1],
+        };
+
+        const m = moves[event.key];
+        if (!m) return;
+
+        event.preventDefault();
+        const w = bg.width / 8;
+        const h = bg.height / 8;
+        cell = { x: (cell.x + m[0] + w) % w, y: (cell.y + m[1] + h) % h };
+        update();
+      };
+
+      hofs.oninput = update;
+      vofs.oninput = update;
+      copies.onchange = update;
+      this.querySelectorAll<HTMLButtonElement>('[data-bg]').forEach(
+        b => (b.onclick = () => select(Number(b.dataset.bg))),
+      );
+
+      this.querySelectorAll('fieldset').forEach(f => (f.disabled = false));
+      select(1);
+    }
+  }
+
+  if (!customElements.get('gx-gba-map-viewer')) customElements.define('gx-gba-map-viewer', GbaMapViewer);
+</script>
+
+<style>
+  .map-toolbar {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem !important;
+  }
+
+  .map-toolbar [aria-pressed='true'] {
+    border-color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 14%, var(--background));
+    color: var(--foreground);
+  }
+
+  .map-views {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    align-items: start;
+  }
+
+  .map-views figure {
+    margin: 0;
+    min-width: 0;
+  }
+
+  .map-views canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+    image-rendering: pixelated;
+    background: #111;
+  }
+
+  .map-views [data-map] {
+    cursor: crosshair;
+  }
+
+  .map-views [data-screen] {
+    cursor: crosshair;
+  }
+
+  .map-views canvas:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 3px;
+  }
+
+  .map-views figcaption {
+    margin-top: 0.5rem;
+    font-size: 0.8rem;
+    text-align: center;
+    color: var(--muted-foreground);
+  }
+
+  .map-scroll {
+    margin: 1.25rem 0 1rem !important;
+  }
+
+  .map-fields {
+    max-width: 32rem;
+  }
+
+  .map-copies {
+    margin-top: 1rem;
+  }
+
+  @media (max-width: 560px) {
+    .map-views {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

@@ -1,0 +1,198 @@
+---
+import '../../styles/gx-demos.css';
+---
+
+<gx-gba-page-flip class="gx-demo not-prose">
+  <fieldset disabled class="flip-toolbar">
+    <div class="flip-modes" aria-label="Display setup">
+      <button type="button" data-flip="true" aria-pressed="true">Page flipping</button>
+      <button type="button" data-flip="false" aria-pressed="false">One page</button>
+    </div>
+  </fieldset>
+  <div class="flip-pages">
+    <figure>
+      <canvas data-screen width="240" height="160" role="img" aria-label="What the screen shows."></canvas>
+      <figcaption data-screen-label>On screen · page 1</figcaption>
+    </figure>
+    <figure>
+      <canvas data-hidden width="240" height="160" role="img" aria-label="The page the game is drawing.">
+      </canvas>
+      <figcaption data-hidden-label>Being drawn · page 0</figcaption>
+    </figure>
+  </div>
+  <fieldset disabled>
+    <label>
+      Drawing progress: <output data-step>before drawing</output>
+      <input data-progress type="range" min="0" max="45" value="0" aria-label="Drawing progress" />
+    </label>
+  </fieldset>
+  <p class="gx-demo-status" data-stage aria-live="polite">
+    The hidden page still holds the frame that was on screen before the current one.
+  </p>
+  <noscript>
+    <p>
+      The game draws into the hidden page and selects it once the frame is finished. Waiting for VBLANK
+      before the flip also avoids switching pages partway down the screen.
+    </p></noscript
+  >
+</gx-gba-page-flip>
+
+<script>
+  type Meta = { frontPage: number; count: number };
+
+  class GbaPageFlip extends HTMLElement {
+    async connectedCallback() {
+      let meta: Meta;
+      const sheet = new Image();
+
+      try {
+        const response = await fetch('/data/gba-bitmap/drawing.json');
+        if (!response.ok) throw new Error();
+        meta = await response.json();
+        sheet.src = '/images/gba-bitmap/drawing.png';
+        await sheet.decode();
+      } catch {
+        this.querySelector('[data-stage]')!.textContent = 'The captured pages could not load.';
+        return;
+      }
+
+      if (!this.isConnected) return;
+
+      const slider = this.querySelector<HTMLInputElement>('[data-progress]')!;
+      const screen = this.querySelector<HTMLCanvasElement>('[data-screen]')!.getContext('2d')!;
+      const hidden = this.querySelector<HTMLCanvasElement>('[data-hidden]')!.getContext('2d')!;
+      const front = meta.frontPage;
+      const back = 1 - front;
+      const count = meta.count;
+      const last = count; // one extra position for the flip itself
+      let flipping = true;
+      slider.max = String(last);
+
+      // Row 0 of the sheet is the page on screen; rows 1.. are the hidden page over time.
+      const row = (context: CanvasRenderingContext2D, index: number) =>
+        context.drawImage(sheet, 0, index * 160, 240, 160, 0, 0, 240, 160);
+
+      const draw = () => {
+        const position = Number(slider.value);
+        const flipped = position === last;
+        const sample = Math.min(position, count - 1) + 1;
+        const drawn = Math.min(position, count - 1);
+
+        if (!flipping) {
+          row(screen, sample);
+          row(hidden, sample);
+        } else if (flipped) {
+          row(screen, count);
+          row(hidden, 0);
+        } else {
+          row(screen, 0);
+          row(hidden, sample);
+        }
+
+        this.querySelector('[data-step]')!.textContent = flipped
+          ? 'flipped'
+          : drawn === 0
+            ? 'before drawing'
+            : `snapshot ${drawn} of ${count - 1}`;
+        this.querySelector('[data-screen-label]')!.textContent =
+          `On screen · page ${flipped || !flipping ? back : front}`;
+        this.querySelector('[data-hidden-label]')!.textContent = !flipping
+          ? `Being drawn · page ${back}, the same one`
+          : flipped
+            ? `Next to be drawn · page ${front}`
+            : `Being drawn · page ${back}`;
+
+        if (!flipping && flipped) {
+          this.querySelector('[data-stage]')!.textContent =
+            'With one page there’s nothing to flip. The finished frame is already on screen, and the next one will be drawn straight over it.';
+          this.querySelectorAll<HTMLButtonElement>('[data-flip]').forEach(b =>
+            b.setAttribute('aria-pressed', String(b.dataset.flip === 'false')),
+          );
+
+          return;
+        }
+
+        const stage = flipped
+          ? 'The game flips the frame select bit. The finished page appears and the old one becomes the next drawing target.'
+          : drawn === 0
+            ? 'The hidden page still holds the frame that was on screen before the current one.'
+            : drawn === 1
+              ? 'The game clears the hidden page to palette index 0, which is black.'
+              : drawn === count - 1
+                ? 'The frame is finished, but stays hidden until the next flip.'
+                : 'The room is drawn first, then Lara and finally the FPS counter.';
+        this.querySelector('[data-stage]')!.textContent =
+          flipping || flipped
+            ? stage
+            : `${stage} With one page, the screen would show this unfinished frame.`;
+        this.querySelectorAll<HTMLButtonElement>('[data-flip]').forEach(b =>
+          b.setAttribute('aria-pressed', String((b.dataset.flip === 'true') === flipping)),
+        );
+      };
+
+      slider.oninput = draw;
+      this.querySelectorAll<HTMLButtonElement>('[data-flip]').forEach(b => {
+        b.onclick = () => {
+          flipping = b.dataset.flip === 'true';
+          draw();
+        };
+      });
+
+      this.querySelectorAll('fieldset').forEach(f => (f.disabled = false));
+      draw();
+    }
+  }
+
+  if (!customElements.get('gx-gba-page-flip')) customElements.define('gx-gba-page-flip', GbaPageFlip);
+</script>
+
+<style>
+  .flip-toolbar {
+    margin-bottom: 1rem !important;
+  }
+
+  .flip-modes {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .flip-modes [aria-pressed='true'] {
+    border-color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 14%, var(--background));
+    color: var(--foreground);
+  }
+
+  .flip-pages {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .flip-pages figure {
+    margin: 0;
+    min-width: 0;
+  }
+
+  .flip-pages canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 3 / 2;
+    background: #111;
+    image-rendering: pixelated;
+  }
+
+  .flip-pages figcaption {
+    margin-top: 0.5rem;
+    font-size: 0.8rem;
+    text-align: center;
+    color: var(--muted-foreground);
+  }
+
+  @media (max-width: 550px) {
+    .flip-pages {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

@@ -11,7 +11,7 @@ const steps=['Stage 1','Stage 2','Keep 8 bits','Alpha test'];
   </fieldset>
   <div class="pipe-focus">
     <img data-eye src="/images/galaxy-eyes/eye-open.png" width="64" height="64" alt="The eye texture survives the final alpha test." />
-    <div><p class="pipe-expression" data-expression>128 ≤ 191 ≤ 255</p><p data-explain aria-live="polite">Both comparisons pass. The eye surface can write its color.</p></div>
+    <div><p class="pipe-expression" data-expression>128 ≤ 191 ≤ 255</p><p class="gx-demo-status" data-explain aria-live="polite">Both comparisons pass. The eye surface can write its color.</p></div>
   </div>
   <p class="pipe-note">Integer calculation for the captured opaque eye texture.</p>
 </gx-galaxy-pipeline>
@@ -46,7 +46,6 @@ const steps=['Stage 1','Stage 2','Keep 8 bits','Alpha test'];
   .pipe-toggle{margin-top:1rem;}
   .pipe-focus{display:grid;grid-template-columns:80px minmax(0,1fr);gap:1.25rem;align-items:center;padding:1.5rem 0 1rem;}
   .pipe-focus img{width:80px;height:80px;image-rendering:pixelated;margin:0;}
-  .pipe-focus [data-explain]{font-size:.9rem;}
   .pipe-expression{font:600 clamp(.85rem,3vw,1.2rem) ui-monospace,monospace;}
   .pipe-note{color:var(--muted-foreground);font-size:.8rem;text-align:center;margin:0;}
   @media(max-width:400px){.pipe-steps strong{font-size:1.35rem;}.pipe-steps span{font-size:.67rem;}.pipe-focus{grid-template-columns:58px minmax(0,1fr);gap:.75rem;}.pipe-focus img{width:58px;height:58px;}}

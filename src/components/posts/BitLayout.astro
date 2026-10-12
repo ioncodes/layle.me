@@ -1,0 +1,179 @@
+---
+import '../../styles/gx-demos.css';
+
+type Color =
+  | 'blue'
+  | 'red'
+  | 'gold'
+  | 'green'
+  | 'purple'
+  | 'teal'
+  | 'orange'
+  | 'pink'
+  | 'olive'
+  | 'slate'
+  | 'muted'
+  | 'unused';
+type Field = { bits: number | [number, number]; name: string; unused?: boolean };
+type Row = { label?: string; fields: Field[] };
+interface Props {
+  label?: string;
+  fields?: Field[];
+  rows?: Row[];
+  size?: number;
+  caption?: string;
+}
+
+const { label, fields = [], rows = [{ label, fields }], size = 16, caption } = Astro.props;
+const palette: Color[] = [
+  'blue',
+  'red',
+  'gold',
+  'green',
+  'purple',
+  'teal',
+  'orange',
+  'pink',
+  'olive',
+  'slate',
+];
+const range = (from: number, to: number) => (from === to ? String(from) : `${from}–${to}`);
+
+// Turns each row into boxes from the highest bit to the lowest, filling unlisted bits with muted boxes.
+const layouts = rows.map(row => {
+  // Every field of a register gets its own color, in the order they're listed. Unused bits are striped.
+  let next = 0;
+  const named = row.fields.map(field => {
+    const [from, to] = typeof field.bits === 'number' ? [field.bits, field.bits] : field.bits;
+    return {
+      from,
+      to,
+      name: field.name,
+      color: field.unused ? ('unused' as Color) : palette[next++ % palette.length],
+    };
+  });
+  const boxes: { from: number; to: number; color: Color }[] = [];
+  for (let bit = size - 1; bit >= 0; ) {
+    const field = named.find(f => bit >= f.from && bit <= f.to);
+    if (field) {
+      boxes.push(field);
+      bit = field.from - 1;
+      continue;
+    }
+    let low = bit;
+    while (low > 0 && !named.some(f => low - 1 >= f.from && low - 1 <= f.to)) low--;
+    boxes.push({ from: low, to: bit, color: 'unused' });
+    bit = low - 1;
+  }
+  return {
+    label: row.label,
+    boxes,
+    legend: named.filter(f => f.color !== 'unused').sort((a, b) => b.from - a.from),
+  };
+});
+---
+
+<figure class="gx-demo gx-bitlayout not-prose">
+  {
+    layouts.map(row => (
+      <div class="gx-bitlayout-row">
+        {row.label && <p class="gx-bitlayout-label">{row.label}</p>}
+        <div
+          class="gx-bitlayout-boxes"
+          style={`grid-template-columns: repeat(${size}, minmax(0, 1fr))`}
+          aria-hidden="true"
+        >
+          {row.boxes.map(box => (
+            <span
+              class={`gx-bitlayout-box gx-bit-${box.color}`}
+              style={`grid-column: span ${box.to - box.from + 1}`}
+            >
+              {range(box.from, box.to)}
+            </span>
+          ))}
+        </div>
+        <ul class="gx-bitlayout-legend">
+          {row.legend.map(field => (
+            <li>
+              <span class={`gx-swatch gx-bit-${field.color}`} />
+              {field.name}{' '}
+              <small>
+                {field.from === field.to ? 'bit' : 'bits'} {range(field.from, field.to)}
+              </small>
+            </li>
+          ))}
+        </ul>
+      </div>
+    ))
+  }
+  {caption && <figcaption>{caption}</figcaption>}
+</figure>
+<style>
+  .gx-bitlayout {
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .gx-bitlayout-row + .gx-bitlayout-row {
+    margin-top: 1.1rem;
+  }
+
+  .gx-bitlayout-label {
+    margin: 0 0 0.35rem !important;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--muted-foreground);
+  }
+
+  .gx-bitlayout-boxes {
+    display: grid;
+    gap: 3px;
+  }
+
+  .gx-bitlayout-box {
+    padding: 0.4rem 0;
+    border-radius: 3px;
+    text-align: center;
+    font-family: ui-monospace, monospace;
+    font-size: 0.75rem;
+    color: var(--foreground);
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  .gx-bitlayout-box:is(.gx-bit-muted, .gx-bit-unused) {
+    color: var(--muted-foreground);
+  }
+
+  /* Bits that no field uses are striped. */
+  .gx-bitlayout-box.gx-bit-unused {
+    background: repeating-linear-gradient(135deg, var(--muted) 0 5px, transparent 5px 10px);
+    box-shadow: inset 0 0 0 1px var(--border);
+  }
+
+  .gx-bitlayout-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1.25rem;
+    margin: 0.5rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .gx-bitlayout-legend li {
+    margin: 0;
+  }
+
+  .gx-bitlayout-legend small {
+    margin-left: 0.2rem;
+    font-size: 0.75rem;
+    color: var(--muted-foreground);
+  }
+
+  .gx-bitlayout figcaption {
+    margin-top: 0.75rem;
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--muted-foreground);
+  }
+</style>

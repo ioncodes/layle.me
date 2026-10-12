@@ -1,0 +1,249 @@
+---
+import '../../styles/gx-demos.css';
+const layers = ['BG0', 'BG1', 'BG2', 'BG3', 'Sprites'];
+---
+
+<gx-gba-layer-stack class="gx-demo not-prose">
+  <div class="stack-result">
+    <img
+      data-fallback
+      src="/images/gba-bitmap/shaman-king.png"
+      width="240"
+      height="160"
+      alt="Shaman King: Master of Spirits, with the player character in a desert canyon under a cloudy sky."
+      loading="lazy"
+    />
+    <canvas
+      data-result
+      width="240"
+      height="160"
+      role="img"
+      aria-label="The composited frame with the selected layers and priorities."
+      hidden></canvas>
+  </div>
+  <fieldset disabled class="stack-layers">
+    {
+      layers.map((name, i) => (
+        <div class="stack-layer" data-layer={i}>
+          <button type="button" data-toggle={i} aria-pressed="true" aria-label={`Show ${name}`}>
+            <canvas data-thumb={i} width="240" height="160" aria-hidden="true" />
+            <span>{name}</span>
+          </button>
+          <label>
+            Priority
+            <select data-priority={i} aria-label={`${name} priority`}>
+              {[0, 1, 2, 3].map(p => (
+                <option value={p}>{p}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+      ))
+    }
+  </fieldset>
+  <p class="gx-demo-status" data-order aria-live="polite">–</p>
+  <button type="button" class="stack-reset" data-reset disabled>Restore the game’s priorities</button>
+</gx-gba-layer-stack>
+
+<script>
+  import { WIDTH, HEIGHT } from './gba-bitmap';
+
+  import {
+    loadCapture,
+    background,
+    layer,
+    spriteLayer,
+    paint,
+    fill,
+    checker,
+    type Capture,
+  } from './gba-video';
+
+  class GbaLayerStack extends HTMLElement {
+    async connectedCallback() {
+      let capture: Capture;
+
+      try {
+        capture = await loadCapture('shaman-king');
+      } catch {
+        return;
+      }
+
+      if (!this.isConnected) return;
+
+      const bgs = [0, 1, 2, 3].map(i => background(capture, i));
+      const pixels = bgs.map(bg => layer(capture, bg));
+      const sprites = spriteLayer(capture);
+
+      // Both visible sprites in this frame share one priority, so a single control covers them.
+      const spritePriority = sprites.priority[sprites.index.findIndex(i => i >= 0)];
+      const original = [...bgs.map(bg => bg.priority), spritePriority];
+      let priorities = [...original];
+      let shown = [true, true, true, true, true];
+      const selects = [...this.querySelectorAll<HTMLSelectElement>('[data-priority]')];
+
+      const thumb = (i: number) => {
+        const image = new ImageData(WIDTH, HEIGHT);
+        checker(image);
+        if (i < 4) paint(capture, image, pixels[i]);
+        else paint(capture, image, sprites.index);
+        this.querySelector<HTMLCanvasElement>(`[data-thumb="${i}"]`)!
+          .getContext('2d')!
+          .putImageData(image, 0, 0);
+      };
+
+      const update = () => {
+        // Lower priority numbers are in front, and BG0 beats BG3 on a tie.
+        const order = [0, 1, 2, 3]
+          .filter(i => shown[i])
+          .sort((a, b) => priorities[a] - priorities[b] || a - b);
+        const final = new ImageData(WIDTH, HEIGHT);
+        fill(capture, final);
+        const indexes = new Int16Array(WIDTH * HEIGHT).fill(-1);
+
+        for (let p = 0; p < WIDTH * HEIGHT; p++) {
+          let top = -1;
+          let topPriority = 4;
+          for (const i of order)
+            if (pixels[i][p] >= 0) {
+              top = pixels[i][p];
+              topPriority = priorities[i];
+              break;
+            }
+
+          // A sprite sits in front of every background with the same or a higher priority number.
+          if (shown[4] && sprites.index[p] >= 0 && priorities[4] <= topPriority) top = sprites.index[p];
+          indexes[p] = top;
+        }
+
+        paint(capture, final, indexes);
+        this.querySelector<HTMLCanvasElement>('[data-result]')!.getContext('2d')!.putImageData(final, 0, 0);
+        this.querySelectorAll<HTMLButtonElement>('[data-toggle]').forEach((b, i) =>
+          b.setAttribute('aria-pressed', String(shown[i])),
+        );
+
+        selects.forEach((s, i) => (s.value = String(priorities[i])));
+        const names = order.map(i => `BG${i} (${priorities[i]})`);
+
+        // Sprites go in front of the first background with the same or a higher number.
+        if (shown[4]) {
+          const at = order.findIndex(i => priorities[i] >= priorities[4]);
+          names.splice(at < 0 ? names.length : at, 0, `Sprites (${priorities[4]})`);
+        }
+
+        this.querySelector('[data-order]')!.textContent = names.length
+          ? `From front to back: ${names.join(', ')}, then the backdrop color.`
+          : 'Only the backdrop color is left.';
+        this.querySelector<HTMLButtonElement>('[data-reset]')!.disabled = priorities.every(
+          (p, i) => p === original[i],
+        );
+      };
+
+      this.querySelectorAll<HTMLButtonElement>('[data-toggle]').forEach((b, i) => {
+        b.onclick = () => {
+          shown[i] = !shown[i];
+          update();
+        };
+      });
+
+      selects.forEach((s, i) => {
+        s.onchange = () => {
+          priorities[i] = Number(s.value);
+          update();
+        };
+      });
+
+      this.querySelector<HTMLButtonElement>('[data-reset]')!.onclick = () => {
+        priorities = [...original];
+        update();
+      };
+
+      [0, 1, 2, 3, 4].forEach(thumb);
+      this.querySelector<HTMLElement>('[data-result]')!.hidden = false;
+      this.querySelector<HTMLElement>('[data-fallback]')!.hidden = true;
+      this.querySelector('fieldset')!.disabled = false;
+      update();
+    }
+  }
+
+  if (!customElements.get('gx-gba-layer-stack')) customElements.define('gx-gba-layer-stack', GbaLayerStack);
+</script>
+
+<style>
+  .stack-result {
+    background: #111;
+  }
+
+  .stack-result :is(img, canvas) {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin: 0;
+    image-rendering: pixelated;
+  }
+
+  .stack-result [hidden] {
+    display: none;
+  }
+
+  .stack-layers {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.6rem;
+    margin-top: 1rem !important;
+  }
+
+  .stack-layer {
+    display: grid;
+    gap: 0.4rem;
+    min-width: 0;
+  }
+
+  .gx-demo .stack-layer button {
+    display: grid;
+    gap: 0.3rem;
+    padding: 0.3rem;
+  }
+
+  .gx-demo .stack-layer button[aria-pressed='true'] {
+    border-color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 14%, var(--background));
+  }
+
+  .gx-demo .stack-layer button[aria-pressed='false'] canvas {
+    opacity: 0.3;
+  }
+
+  .stack-layer canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+    image-rendering: pixelated;
+  }
+
+  .stack-layer span {
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+
+  .stack-layer label {
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  .gx-demo .stack-layer select {
+    margin-top: 0.25rem;
+    padding: 0.3rem 0.4rem;
+    font-size: 0.8rem;
+  }
+
+  .gx-demo .stack-reset {
+    margin-top: 0.75rem;
+  }
+
+  @media (max-width: 560px) {
+    .stack-layers {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+</style>

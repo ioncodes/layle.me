@@ -18,6 +18,7 @@ import GalaxyPipeline from '../../src/components/posts/GalaxyPipeline.astro';
 import GalaxyBits from '../../src/components/posts/GalaxyBits.astro';
 import GalaxyFixLab from '../../src/components/posts/GalaxyFixLab.astro';
 import SunshineTexture from '../../src/components/posts/SunshineTexture.astro';
+import FunFact from '../../src/components/posts/FunFact.astro';
 
 Mario was missing his eyes in *Super Mario Galaxy* for the looooongest time. In [Gecko](https://github.com/ioncodes/gecko), my GameCube and Wii emulator, the file selection screen looked mostly fine until Mario's head appeared with 2 fat holes in it.
 
@@ -40,18 +41,17 @@ A 3D model is made from triangles. A **texture** supplies the image painted onto
 
 Drawing a triangle produces **fragments**: candidates for pixels on the screen. A fragment can still be rejected before it changes the image. In this case the triangles were valid, but all their fragments failed a later test.
 
-Here is the actual geometry from the captured frame. Enable **Show eye triangles** in the **Old Gecko** view, then switch to **Fixed**. You can also rotate the head or lift the eye surfaces away from it to inspect them.
+Here is the actual geometry from the game. Enable **Show eye triangles** in the **Old Gecko** view, then switch to **Fixed**. You can also rotate the head or lift the eye surfaces away from it to inspect them.
 
 <GalaxyHead />
 
 As you can see the eyes are still present in the geometry, but somehow they get rejected!
 
-<aside aria-labelledby="mario-head-fun-fact" className="my-8 border border-border bg-muted/40 px-5 py-4 [&>p]:my-0">
-  <strong id="mario-head-fun-fact" className="mb-2 block text-base">Fun fact</strong>
+<FunFact>
 
 The file selection head is its own model, `FileSelectDataMario`, with a material called `EyeMat_v`. Its [blink animations](https://github.com/SMGCommunity/Petari/blob/27b8b9b9ce232191af29995d9a584aa78fafdbd7/src/Game/Map/FileSelectModel.cpp) change which eye texture that material uses.
 
-</aside>
+</FunFact>
 
 ## An opaque texture
 
@@ -111,7 +111,7 @@ In code this is `447 & 255`. The mask `255` has all 8 low bits set to `1`, so th
 
 Clamping 447 would produce 255, whereas wrapping produces 191. Both happen to pass this material's alpha test, but they are different rules. Try **383**: wrapping gives 127, which fails the lower bound, while clamping gives 255, which passes.
 
-That example changes the intermediate number to explain the distinction. The captured open-eye texture always produces 447.
+That example changes the intermediate number to explain the distinction. The game's open-eye texture always produces 447.
 
 After wrapping, the game's actual test succeeds:
 
@@ -141,7 +141,7 @@ The upper bound of 255 looks redundant when the test receives an 8-bit value, be
 
 The commit introduces integer arithmetic in the regular combiners, wraps the A/B/C inputs to 8 bits and wraps the final RGB and alpha outputs before testing. The D input keeps its wider value, since that is where the stage can receive a signed intermediate result.
 
-The commit techically concerns various changes, so I replayed the captured frame with individual pieces of it applied. Integer arithmetic alone still leaves **447** going into a test whose upper bound is **255**. The decisive change for these eyes is the final alpha conversion, before `alpha_compare`:
+The commit techically concerns various changes, so I tried individual pieces of it on their own. Integer arithmetic alone still leaves **447** going into a test whose upper bound is **255**. The decisive change for these eyes is the final alpha conversion, before `alpha_compare`:
 
 ```wgsl
 tev_wrap_alpha(state.regs[state.last_alpha_dest].a)
@@ -157,12 +157,11 @@ fn tev_wrap_alpha(value: f32) -> f32 {
 
 Adding just that helper to the old float calculation produces **190**, whereas the full integer calculation produces **191**. Both pass, so restoring the eyes by itself doesn't prove that all the arithmetic is accurate...
 
-<aside aria-labelledby="tev-registers-fun-fact" className="my-8 border border-border bg-muted/40 px-5 py-4 [&>p]:my-0">
-  <strong id="tev-registers-fun-fact" className="mb-2 block text-base">Fun fact</strong>
+<FunFact>
 
 As mentioned before, the commit is still a mixed implementation: the regular combiner calculates with integers, but the surrounding TEV registers remain normalized floats. Keeping the values as integers throughout would make the intended widths, rounding and comparisons easier to follow. I'm not sure yet what the full implications of this mixed approach are.
 
-</aside>
+</FunFact>
 
 ## What about Sunshine's ocean?
 
@@ -203,7 +202,7 @@ The material has 3 TEV stages again, but they do different work:
 2. Stage 1 multiplies it by the second sample, adds a constant alpha of 255 and doubles the result, without clamping.
 3. Stage 2 reads that intermediate alpha as its **C input**. That input keeps only 8 bits.
 
-Here is 1 pixel from the captured frame. The texture samples, rounded into byte units, are **93** and **121**. With TEV's integer rounding, the doubled texture contribution <Math tex="q" /> and the stage 1 result are:
+Here is 1 pixel from the eyes. The texture samples, rounded into byte units, are **93** and **121**. With TEV's integer rounding, the doubled texture contribution <Math tex="q" /> and the stage 1 result are:
 
 <Math block tex={String.raw`\begin{aligned}
 q &= \left\lfloor\frac{2\times121\times93+128}{256}\right\rfloor = 88 \\
@@ -214,7 +213,7 @@ The floor brackets mean rounding down. The next stage reads the low byte:
 
 <Math block tex={String.raw`598 \bmod 256 = 86`} />
 
-The material's remaining multiplication preserves that 86. Unlike the eyes, this material's alpha test accepts every fragment and it **enables blending**. Its RGB output is white, and the configured blend adds that white in proportion to alpha. In normalized 0-1 units, a background color channel <Math tex="b" /> becomes:
+The material's remaining multiplication preserves that 86. Unlike the eyes, this material's alpha test accepts every fragment and it **enables blending**. Its RGB output is white and the configured blend adds that white in proportion to alpha. In normalized 0-1 units, a background color channel <Math tex="b" /> becomes:
 
 <Math block tex={String.raw`\text{new channel} = \min\!\left(1,\;b+\frac{86}{255}\right)`} />
 
@@ -242,7 +241,7 @@ These captures all use the integer combiner from the fix. Toggle the input and o
 
 <GalaxyFixLab />
 
-Input wrapping restores Sunshine's water, but Galaxy still loses its eyes: all the eye stage's inputs are already in range, and that stage creates the overflowing result itself. Final output wrapping restores the eyes.
+Input wrapping restores Sunshine's water, but Galaxy still loses its eyes: all the eye stage's inputs are already in range and that stage creates the overflowing result itself. Final output wrapping restores the eyes.
 
 There is a trap in Sunshine, though. Wrapping only at the final output also makes the ocean look almost right. It gives **88** for our example pixel instead of **86**, because stage 2 has already performed arithmetic on the incorrectly wide C input. Wrapping afterwards cannot undo that difference. With integer arithmetic and input wrapping, it finally looks right!
 

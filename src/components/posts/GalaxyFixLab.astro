@@ -18,7 +18,7 @@ import '../../styles/galaxy-wpar-demos.css';
       <div class="fix-reading"><span>Example alpha<strong data-water-alpha>86</strong></span><span data-water-verdict>Wave brightness restored</span></div>
     </figure>
   </div>
-  <p class="fix-caption" data-result aria-live="polite">Both conversions enabled. Both materials receive the intended alpha.</p>
+  <p class="gx-demo-status" data-result aria-live="polite">Both conversions enabled. Both materials receive the intended alpha.</p>
 </gx-galaxy-fix>
 <script>
   class GalaxyFixLab extends HTMLElement {
@@ -65,6 +65,5 @@ import '../../styles/galaxy-wpar-demos.css';
   .fix-reading span:first-child{font-size:.75rem;color:var(--muted-foreground);}
   strong{display:block;font-size:1.8rem;line-height:1.2;font-weight:600;font-variant-numeric:tabular-nums;color:var(--foreground);}
   .fix-reading span:last-child{font-size:.85rem;text-align:right;}
-  .fix-caption{text-align:center;font-size:.8rem;color:var(--muted-foreground);margin-top:1.25rem;}
   @media(max-width:520px){.fix-scenes{grid-template-columns:1fr;gap:1.25rem;}img{height:auto;max-height:230px;object-fit:contain;background:#073952;}figure:first-child img{object-fit:cover;object-position:center 46%;}.fix-reading{margin-top:.5rem;}}
 </style>

@@ -1,0 +1,242 @@
+---
+import '../../styles/gx-demos.css';
+---
+
+<gx-gba-vram-map class="gx-demo not-prose">
+  <fieldset disabled class="vram-modes" aria-label="Bitmap mode">
+    {
+      [3, 4, 5].map(mode => (
+        <button type="button" data-mode={mode} aria-pressed={mode === 4}>
+          Mode {mode}
+        </button>
+      ))
+    }
+  </fieldset>
+  <div
+    class="vram-bar"
+    role="img"
+    aria-label="Mode 4 uses 2 pages of 38'400 bytes at 0x06000000 and 0x0600a000. Sprite tiles keep the last 16 KiB."
+  >
+    <span class="vram-page" data-page="0" style="left: 0%; width: 39.06%">Page 0</span>
+    <span class="vram-page" data-page="1" style="left: 41.67%; width: 39.06%">Page 1</span>
+    <span class="vram-obj" style="left: 83.33%; width: 16.67%">Sprites</span>
+  </div>
+  <div class="vram-ticks" aria-hidden="true">
+    <span style="left: 0%">0x06000000</span>
+    <span style="left: 41.67%">0x0600a000</span>
+    <span style="left: 83.33%">0x06014000</span>
+  </div>
+  <p class="gx-demo-status" data-readout aria-live="polite">
+    240 × 160 pixels × 1 byte = 38'400 bytes per page, 2 pages. Each byte selects 1 of 256 palette colors.
+  </p>
+  <figure class="vram-example">
+    <img
+      data-example
+      src="/images/gba-bitmap/openlara.png"
+      width="240"
+      height="160"
+      alt="OpenLara's Caves level in mode 4."
+      loading="lazy"
+    />
+    <figcaption data-example-caption>OpenLara in mode 4, captured in Sly</figcaption>
+  </figure>
+</gx-gba-vram-map>
+
+<script>
+  import { thousands } from './gba-bitmap';
+
+  const VRAM = 0x18000;
+  const modes: Record<
+    number,
+    {
+      width: number;
+      height: number;
+      bytes: number;
+      pages: number;
+      colors: string;
+      example: [string, string, string];
+    }
+  > = {
+    3: {
+      width: 240,
+      height: 160,
+      bytes: 2,
+      pages: 1,
+      colors: 'Each pixel stores its own 15-bit color.',
+      example: [
+        '/images/gba-bitmap/gba-video.png',
+        'A Fairly OddParents episode playing in mode 3.',
+        'Game Boy Advance Video in mode 3, captured in Sly',
+      ],
+    },
+    4: {
+      width: 240,
+      height: 160,
+      bytes: 1,
+      pages: 2,
+      colors: 'Each byte selects 1 of 256 palette colors.',
+      example: [
+        '/images/gba-bitmap/openlara.png',
+        "OpenLara's Caves level in mode 4.",
+        'OpenLara in mode 4, captured in Sly',
+      ],
+    },
+    5: {
+      width: 160,
+      height: 128,
+      bytes: 2,
+      pages: 2,
+      colors: 'Each pixel stores its own 15-bit color.',
+      example: [
+        '/images/gba-bitmap/mode5.png',
+        'A 160 × 128 test image in the top-left corner of the screen, surrounded by the backdrop color.',
+        'A mode 5 test program in Sly. The rest of the screen shows the backdrop.',
+      ],
+    },
+  };
+
+  class GbaVramMap extends HTMLElement {
+    connectedCallback() {
+      const pages = this.querySelectorAll<HTMLElement>('[data-page]');
+
+      const show = (mode: number) => {
+        const m = modes[mode];
+        const size = m.width * m.height * m.bytes;
+
+        pages.forEach((page, i) => {
+          page.hidden = i >= m.pages;
+          page.style.left = `${((i * 0xa000) / VRAM) * 100}%`;
+          page.style.width = `${(size / VRAM) * 100}%`;
+        });
+
+        this.querySelectorAll<HTMLButtonElement>('[data-mode]').forEach(b =>
+          b.setAttribute('aria-pressed', String(Number(b.dataset.mode) === mode)),
+        );
+
+        const count = m.pages === 1 ? '1 page' : '2 pages';
+        this.querySelector('[data-readout]')!.textContent =
+          `${m.width} × ${m.height} pixels × ${m.bytes} ${m.bytes === 1 ? 'byte' : 'bytes'} = ${thousands(size)} bytes per page, ${count}. ${m.colors}`;
+        const [src, alt, caption] = m.example;
+        const image = this.querySelector<HTMLImageElement>('[data-example]')!;
+        image.src = src;
+        image.alt = alt;
+        this.querySelector('[data-example-caption]')!.textContent = caption;
+        this.querySelector('.vram-bar')!.setAttribute(
+          'aria-label',
+          `Mode ${mode} uses ${count} of ${thousands(size)} bytes. Sprite tiles keep the last 16 KiB.`,
+        );
+      };
+
+      this.querySelectorAll<HTMLButtonElement>('[data-mode]').forEach(
+        b => (b.onclick = () => show(Number(b.dataset.mode))),
+      );
+
+      this.querySelector('fieldset')!.disabled = false;
+    }
+  }
+
+  if (!customElements.get('gx-gba-vram-map')) customElements.define('gx-gba-vram-map', GbaVramMap);
+</script>
+
+<style>
+  .vram-modes {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem !important;
+  }
+
+  .vram-modes [aria-pressed='true'] {
+    border-color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 14%, var(--background));
+    color: var(--foreground);
+  }
+
+  .vram-bar {
+    position: relative;
+    height: 3.25rem;
+    background: repeating-linear-gradient(
+      135deg,
+      var(--muted),
+      var(--muted) 6px,
+      transparent 6px,
+      transparent 12px
+    );
+    border: 1px solid var(--border);
+  }
+
+  .vram-bar span {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    font-size: 0.8rem;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: width 0.2s;
+  }
+
+  .vram-bar [hidden] {
+    display: none;
+  }
+
+  .vram-page {
+    background: var(--gx-cell-blue);
+    border-right: 1px solid var(--background);
+  }
+
+  .vram-obj {
+    background: var(--gx-cell-gold);
+  }
+
+  .vram-ticks {
+    position: relative;
+    height: 1.5rem;
+    margin-top: 0.35rem;
+    font:
+      0.7rem ui-monospace,
+      monospace;
+    color: var(--muted-foreground);
+  }
+
+  .vram-ticks span {
+    position: absolute;
+    transform: translateX(-50%);
+  }
+
+  .vram-ticks span:first-child {
+    transform: none;
+  }
+
+  .vram-example {
+    margin: 1.25rem auto 0;
+    max-width: 30rem;
+  }
+
+  .vram-example img {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin: 0;
+    image-rendering: pixelated;
+    background: #111;
+  }
+
+  .vram-example figcaption {
+    margin-top: 0.5rem;
+    font-size: 0.8rem;
+    text-align: center;
+    color: var(--muted-foreground);
+  }
+
+  @media (max-width: 480px) {
+    .vram-ticks span:nth-child(2) {
+      display: none;
+    }
+
+    .vram-bar span {
+      font-size: 0.7rem;
+    }
+  }
+</style>

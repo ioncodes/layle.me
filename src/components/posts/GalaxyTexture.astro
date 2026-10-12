@@ -18,7 +18,7 @@ import '../../styles/galaxy-wpar-demos.css';
         <label>Texel column <input data-x type="range" min="0" max="63" value="28" aria-label="Texel column" /></label>
         <label>Texel row <input data-y type="range" min="0" max="63" value="29" aria-label="Texel row" /></label>
       </fieldset>
-      <p class="texture-readout" data-readout aria-live="polite">Select a texel to inspect its color.</p>
+      <p class="texture-readout gx-demo-status" data-readout aria-live="polite">Select a texel to inspect its color.</p>
       <p class="texture-opacity">All 4'096 texels are fully opaque (alpha 255).</p>
     </div>
   </div>
@@ -86,7 +86,7 @@ import '../../styles/galaxy-wpar-demos.css';
   .texture-hint{font-size:.8rem;text-align:center;color:var(--muted-foreground);margin:.6rem 0 0;}
   [data-crosshair]{position:absolute;left:44.5%;top:46%;width:9px;height:9px;border:1px solid black;outline:1px solid white;transform:translate(-50%,-50%);pointer-events:none;}
   .texture-controls label{margin-top:.75rem;}
-  .texture-readout{font:.8rem/1.7 ui-monospace,monospace;min-height:3.5em;}
+  .texture-readout{font-family:ui-monospace,monospace;}
   .texture-opacity{font-size:.85rem;}
   .texture-caption{font-size:.8rem;text-align:center;color:var(--muted-foreground);}
   @media(max-width:520px){.texture-layout{grid-template-columns:1fr;gap:1rem;}.texture-image{max-width:220px;}.texture-controls{display:grid;grid-template-columns:1fr 1fr;gap:.5rem 1rem;}.texture-controls label:has(select){grid-column:1/-1;}}

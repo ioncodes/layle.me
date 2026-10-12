@@ -1,0 +1,420 @@
+---
+import '../../styles/gx-demos.css';
+---
+
+<gx-gba-sprite-inspector class="gx-demo not-prose">
+  <fieldset disabled class="sprite-toolbar">
+    <div class="sprite-buttons" aria-label="Captured frame">
+      <button type="button" data-source="action-man-map" aria-pressed="true">Island map · Mode 3</button>
+      <button type="button" data-source="action-man-jungle" aria-pressed="false">Jungle · Mode 0</button>
+    </div>
+    <div class="sprite-buttons" aria-label="Sprite tile mapping">
+      <button type="button" data-mapping="1" aria-pressed="true">1D mapping</button>
+      <button type="button" data-mapping="0" aria-pressed="false">2D mapping</button>
+    </div>
+  </fieldset>
+  <div class="sprite-stage">
+    <img
+      data-fallback
+      src="/images/gba-bitmap/action-man-map.png"
+      width="240"
+      height="160"
+      alt="Action Man's island map: a mode 3 bitmap of the island with sprites for the text, the portrait and the level marker."
+      loading="lazy"
+    />
+    <canvas
+      data-frame
+      width="240"
+      height="160"
+      tabindex="0"
+      role="img"
+      aria-label="Captured frame. Click a sprite or use the arrow keys to step through them."
+      hidden></canvas>
+    <canvas data-boxes width="960" height="640" aria-hidden="true" hidden></canvas>
+  </div>
+  <p class="sprite-caption" data-caption>A mode 3 bitmap with 28 sprites on top, captured in Sly.</p>
+  <fieldset disabled class="sprite-options">
+    <label><input type="checkbox" data-draw checked /> Draw sprites</label>
+    <label><input type="checkbox" data-outline checked /> Outline sprites</label>
+    <div class="sprite-step">
+      <button type="button" data-step="-1" aria-label="Previous sprite">←</button>
+      <button type="button" data-step="1" aria-label="Next sprite">→</button>
+    </div>
+  </fieldset>
+  <div class="sprite-detail">
+    <div class="sprite-zoom">
+      <canvas
+        data-zoom
+        width="512"
+        height="512"
+        role="img"
+        aria-label="The selected sprite, enlarged, with its 8 × 8 tiles and their tile numbers."></canvas>
+      <div class="sprite-tiles" data-tiles aria-hidden="true"></div>
+    </div>
+    <div class="sprite-fields" data-fields aria-live="polite"></div>
+  </div>
+</gx-gba-sprite-inspector>
+
+<script>
+  import { hex, bitStrip } from './gba-bitmap';
+
+  import {
+    loadSpriteFrame,
+    sprites,
+    render,
+    contains,
+    onScreen,
+    spritePixel,
+    spriteColor,
+    tileAt,
+    type Sprite,
+    type SpriteFrame,
+  } from './gba-sprites';
+
+  const captions: Record<string, string> = {
+    'action-man-map': 'A mode 3 bitmap with 28 sprites on top, captured in Sly.',
+    'action-man-jungle':
+      'A mode 0 level with all 4 tiled backgrounds switched on and 14 sprites, captured in Sly.',
+  };
+
+  class GbaSpriteInspector extends HTMLElement {
+    async connectedCallback() {
+      const frames: Record<string, SpriteFrame> = {};
+
+      try {
+        for (const name of Object.keys(captions)) frames[name] = await loadSpriteFrame(name);
+      } catch {
+        return;
+      }
+
+      if (!this.isConnected) return;
+
+      const canvas = this.querySelector<HTMLCanvasElement>('[data-frame]')!;
+      const boxes = this.querySelector<HTMLCanvasElement>('[data-boxes]')!;
+      const zoom = this.querySelector<HTMLCanvasElement>('[data-zoom]')!;
+      const draw = this.querySelector<HTMLInputElement>('[data-draw]')!;
+      const outline = this.querySelector<HTMLInputElement>('[data-outline]')!;
+      let source = 'action-man-map';
+      let oneDimensional = true;
+      let list: Sprite[] = [];
+      let selected = 0;
+      const frame = () => frames[source];
+      const visible = () => list.filter(onScreen);
+      const pressed = (attribute: string, value: string) =>
+        this.querySelectorAll<HTMLButtonElement>(`[${attribute}]`).forEach(b =>
+          b.setAttribute('aria-pressed', String(b.getAttribute(attribute) === value)),
+        );
+
+      const drawZoom = (sprite: Sprite) => {
+        const scale = 8;
+        const context = zoom.getContext('2d')!;
+        zoom.width = sprite.width * scale;
+        zoom.height = sprite.height * scale;
+        for (let y = 0; y < sprite.height; y++)
+          for (let x = 0; x < sprite.width; x++) {
+            const index = spritePixel(frame(), sprite, x, y, oneDimensional);
+            context.fillStyle = index
+              ? `rgb(${spriteColor(frame(), sprite, index).join(',')})`
+              : (x + y) % 2
+                ? '#2a2a2a'
+                : '#3a3a3a';
+            context.fillRect(x * scale, y * scale, scale, scale);
+          }
+        const columns = sprite.width / 8;
+        const rows = sprite.height / 8;
+        const numbers: string[] = [];
+        for (let ty = 0; ty < rows; ty++)
+          for (let tx = 0; tx < columns; tx++) {
+            numbers.push(`<span>${tileAt(sprite, tx, ty, oneDimensional)}</span>`);
+          }
+
+        // Scale the sprite to fill the panel along its longer side, keeping its shape.
+        const box = this.querySelector<HTMLElement>('.sprite-zoom')!;
+        box.style.aspectRatio = `${columns} / ${rows}`;
+        box.style.width = columns >= rows ? '100%' : `${(columns / rows) * 100}%`;
+        const tiles = this.querySelector<HTMLElement>('[data-tiles]')!;
+        tiles.style.gridTemplateColumns = `repeat(${columns}, 1fr)`;
+        tiles.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+        tiles.innerHTML = numbers.join('');
+      };
+
+      const update = () => {
+        const shown = visible();
+        const sprite = shown[selected];
+        const context = canvas.getContext('2d')!;
+        const image = context.createImageData(240, 160);
+        if (draw.checked) render(frame(), image, list, oneDimensional);
+        else image.data.set(frame().background.data);
+        context.putImageData(image, 0, 0);
+        const b = boxes.getContext('2d')!;
+        b.clearRect(0, 0, 960, 640);
+        if (outline.checked)
+          for (const s of shown) {
+            b.strokeStyle = s === sprite ? '#ffdc70' : 'rgba(255,255,255,.55)';
+            b.lineWidth = s === sprite ? 4 : 2;
+            for (const dy of [0, -256])
+              b.strokeRect(
+                (s.x > 255 ? s.x - 512 : s.x) * 4 + 1,
+                (s.y + dy) * 4 + 1,
+                s.width * 4 - 2,
+                s.height * 4 - 2,
+              );
+          }
+        if (!sprite) return;
+
+        drawZoom(sprite);
+        const [a0, a1, a2] = sprite.attr;
+        this.querySelector('[data-fields]')!.innerHTML =
+          `<p class="sprite-entry">OAM entry ${sprite.index} at <code>${hex(0x07000000 + sprite.index * 8)}</code></p>` +
+          bitStrip('Attribute 0', a0, [
+            {
+              from: 0,
+              to: 7,
+              name: 'Y position',
+              value: sprite.y + sprite.height > 256 ? `${sprite.y}, wraps to the top` : String(sprite.y),
+            },
+            {
+              from: 8,
+              to: 9,
+              name: 'Rotation, scaling and hiding',
+              value: a0 & 0x100 ? 'rotated' : a0 & 0x200 ? 'hidden' : 'off',
+            },
+            {
+              from: 10,
+              to: 12,
+              name: 'Blending, windows and mosaic',
+              value: `${['normal', 'semi-transparent', 'OBJ window', 'invalid'][(a0 >> 10) & 3]}${a0 & 0x1000 ? ', mosaic' : ''}`,
+            },
+            { from: 13, to: 13, name: 'Bits per pixel', value: sprite.bpp8 ? '8' : '4' },
+            { from: 14, to: 15, name: 'Shape', value: ['square', 'wide', 'tall'][a0 >> 14] ?? '–' },
+          ]) +
+          bitStrip('Attribute 1', a1, [
+            { from: 0, to: 8, name: 'X position', value: String(sprite.x) },
+            { from: 9, to: 11, name: 'Unused', value: '', unused: true },
+            { from: 12, to: 12, name: 'Horizontal flip', value: sprite.hflip ? 'on' : 'off' },
+            { from: 13, to: 13, name: 'Vertical flip', value: sprite.vflip ? 'on' : 'off' },
+            { from: 14, to: 15, name: 'Size', value: `${sprite.width} × ${sprite.height}` },
+          ]) +
+          bitStrip('Attribute 2', a2, [
+            { from: 0, to: 9, name: 'First tile', value: String(sprite.tile) },
+            { from: 10, to: 11, name: 'Priority', value: String(sprite.priority) },
+            {
+              from: 12,
+              to: 15,
+              name: 'Palette bank',
+              value: sprite.bpp8 ? 'unused' : String(sprite.palette),
+            },
+          ]);
+      };
+
+      const load = (name: string) => {
+        source = name;
+        list = sprites(frame());
+        selected = 0;
+        pressed('data-source', name);
+        this.querySelector('[data-caption]')!.textContent = captions[name];
+        update();
+      };
+
+      const step = (delta: number) => {
+        const n = visible().length;
+        selected = (selected + delta + n) % n;
+        update();
+      };
+
+      canvas.onclick = event => {
+        const r = canvas.getBoundingClientRect();
+        const x = Math.floor(((event.clientX - r.left) / r.width) * 240);
+        const y = Math.floor(((event.clientY - r.top) / r.height) * 160);
+        const hit = visible().findIndex(s => contains(s, x, y));
+
+        if (hit >= 0) {
+          selected = hit;
+          update();
+        }
+      };
+
+      canvas.onkeydown = event => {
+        if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+          event.preventDefault();
+          step(1);
+        }
+
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+          event.preventDefault();
+          step(-1);
+        }
+      };
+
+      this.querySelectorAll<HTMLButtonElement>('[data-step]').forEach(
+        b => (b.onclick = () => step(Number(b.dataset.step))),
+      );
+
+      this.querySelectorAll<HTMLButtonElement>('[data-source]').forEach(
+        b => (b.onclick = () => load(b.dataset.source!)),
+      );
+
+      this.querySelectorAll<HTMLButtonElement>('[data-mapping]').forEach(b => {
+        b.onclick = () => {
+          oneDimensional = b.dataset.mapping === '1';
+          pressed('data-mapping', b.dataset.mapping!);
+          update();
+        };
+      });
+
+      draw.onchange = update;
+      outline.onchange = update;
+      canvas.hidden = false;
+      boxes.hidden = false;
+      this.querySelector<HTMLElement>('[data-fallback]')!.hidden = true;
+      this.querySelectorAll('fieldset').forEach(f => (f.disabled = false));
+      load(source);
+    }
+  }
+
+  if (!customElements.get('gx-gba-sprite-inspector'))
+    customElements.define('gx-gba-sprite-inspector', GbaSpriteInspector);
+</script>
+
+<style>
+  .sprite-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 1rem !important;
+  }
+
+  .sprite-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .sprite-buttons [aria-pressed='true'] {
+    border-color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 14%, var(--background));
+    color: var(--foreground);
+  }
+
+  .sprite-stage {
+    position: relative;
+    background: #111;
+  }
+
+  .sprite-stage :is(img, canvas) {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin: 0;
+    image-rendering: pixelated;
+  }
+
+  .sprite-stage [data-frame] {
+    cursor: pointer;
+  }
+
+  .sprite-stage [data-boxes] {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    image-rendering: auto;
+  }
+
+  .sprite-stage [hidden] {
+    display: none;
+  }
+
+  .sprite-stage canvas:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 3px;
+  }
+
+  .sprite-caption {
+    margin-top: 0.5rem !important;
+    font-size: 0.8rem;
+    text-align: center;
+    color: var(--muted-foreground);
+  }
+
+  .sprite-options {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1.5rem;
+    margin: 1rem 0 !important;
+  }
+
+  .sprite-step {
+    display: flex;
+    gap: 0.4rem;
+    margin-left: auto;
+  }
+
+  .sprite-detail {
+    display: grid;
+    grid-template-columns: 14rem 1fr;
+    gap: 1.5rem;
+    align-items: center;
+  }
+
+  .sprite-zoom {
+    position: relative;
+    justify-self: center;
+    max-width: 14rem;
+  }
+
+  .sprite-detail canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+    background: #111;
+  }
+
+  .sprite-tiles {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    pointer-events: none;
+  }
+
+  .sprite-tiles :global(span) {
+    padding: 3px 0 0 4px;
+    font:
+      600 0.7rem ui-monospace,
+      monospace;
+    color: #ffdc70;
+    text-shadow:
+      0 0 2px #000,
+      0 0 2px #000,
+      0 0 3px #000;
+    overflow: hidden;
+    box-shadow: inset 0 0 0 0.5px rgba(255, 220, 112, 0.55);
+  }
+
+  .sprite-fields {
+    min-width: 0;
+  }
+
+  .sprite-fields :global(.sprite-entry) {
+    margin: 0 0 0.75rem !important;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+
+  .sprite-fields :global(code) {
+    font-size: 0.78rem;
+  }
+
+  @media (max-width: 560px) {
+    .sprite-detail {
+      grid-template-columns: 1fr;
+      justify-items: center;
+    }
+
+    .sprite-fields {
+      justify-self: stretch;
+    }
+  }
+</style>
