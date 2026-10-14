@@ -1,132 +1,63 @@
 ---
-import "../styles/global.css";
-import Navbar from "@/components/Navbar.astro";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card.tsx";
-import { Badge } from "@/components/ui/badge.tsx";
-import Footer from "@/components/Footer.astro";
-import ThemeScript from "@/components/ThemeScript.astro";
+import '../styles/global.css';
+import Navbar from '@/components/Navbar.astro';
+import Footer from '@/components/Footer.astro';
+import ThemeScript from '@/components/ThemeScript.astro';
+import ProjectCard from '@/components/ProjectCard.astro';
 import { getCollection } from 'astro:content';
 
-const projects = await getCollection('projects');
+const projects = (await getCollection('projects')).sort((a, b) => a.data.order - b.data.order);
+const description = 'Emulators, debugging tools, and libraries. A selection of open-source projects by Layle.';
 ---
 
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.png" />
-    <meta name="generator" content={Astro.generator} />
+    <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="alternate" type="application/rss+xml" title="Layle's Lair" href="/rss.xml" />
     <title>Projects - Layle's Lair</title>
-
-    <!-- SEO Meta Tags -->
-    <meta name="description" content="A place where a man gone mad gets to share his projects." />
-
-    <!-- Open Graph Meta Tags -->
+    <meta name="description" content={description} />
     <meta property="og:title" content="Projects - Layle's Lair" />
-    <meta property="og:description" content="A place where a man gone mad gets to share his projects." />
+    <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
     <meta property="og:url" content={Astro.url} />
     <meta property="og:site_name" content="Layle's Lair" />
-
-    <!-- Twitter Card Meta Tags -->
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="Projects - Layle's Lair" />
-    <meta name="twitter:description" content="A place where a man gone mad gets to share his projects." />
+    <meta name="twitter:description" content={description} />
     <meta name="twitter:creator" content="@layle_ctf" />
-
     <ThemeScript />
   </head>
-
   <body>
+    <a class="skip-link" href="#main">Skip to projects</a>
     <Navbar />
 
-    <div class="max-w-4xl mx-auto px-4 py-8">
+    <main id="main" class="max-w-4xl mx-auto px-4 py-8">
       <h1 class="text-4xl font-bold mb-6">Projects</h1>
-      <p class="text-lg text-muted-foreground mb-12">
-        Here you can find a short selection of my open-source projects. These
-        are usually related to reverse engineering, emulation or security
-        research.
+      <p class="text-lg text-muted-foreground mb-10">
+        A selection of my open-source projects, usually related to reverse
+        engineering, emulation, or security research.
       </p>
 
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {
-          projects.map((project) => (
-            <a
-              href={project.data.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              class="block group"
-            >
-              <Card
-                className={`transition-all duration-200 hover:shadow-lg hover:scale-[1.02] cursor-pointer relative ${
-                  project.data.featured
-                    ? "shadow-[0_0_24px_-4px_rgba(167,139,250,0.45)] hover:shadow-[0_0_36px_-4px_rgba(167,139,250,0.75)]"
-                    : ""
-                }`}
-              >
-                <CardHeader>
-                  <div class="flex flex-col sm:flex-row gap-4 sm:gap-6">
-                    <div class="flex-1">
-                      <CardTitle className="group-hover:text-violet-400 transition-colors text-xl mb-2">
-                        {project.data.name}
-                      </CardTitle>
-                      <CardDescription className="mb-3">
-                        {project.data.description}
-                      </CardDescription>
-                      <div class="flex flex-wrap gap-2">
-                        <Badge variant="outline">{project.data.language}</Badge>
-                        <Badge variant="outline">{project.data.category}</Badge>
-                      </div>
-                    </div>
-                    {project.data.image !== undefined && (
-                      <div class="flex-shrink-0 sm:self-start">
-                        <img
-                          src={project.data.image}
-                          alt={`${project.data.name} image`}
-                          class="w-full sm:w-24 sm:h-24 h-32 object-cover rounded-md"
-                        />
-                      </div>
-                    )}
-                  </div>
-                </CardHeader>
-              </Card>
-            </a>
-          ))
-        }
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        {projects.map((project) => <ProjectCard project={project} />)}
       </div>
 
-      <div class="mt-12 text-center">
+      <div class="mt-10 text-center">
         <a
-          href="https://github.com/ioncodes"
+          href="https://github.com/ioncodes?tab=repositories"
           target="_blank"
           rel="noopener noreferrer"
-          class="inline-flex items-center gap-2 text-violet-400 hover:text-violet-300 transition-colors duration-200"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            class="w-5 h-5"
-          >
-            <path
-              d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"
-            ></path>
-          </svg>
-          View all projects on GitHub
-        </a>
+          class="text-violet-600 dark:text-violet-400 hover:underline underline-offset-4"
+        >View all projects on GitHub <span aria-hidden="true">&#8599;&#65038;</span></a>
       </div>
-    </div>
-
+    </main>
     <Footer />
   </body>
 </html>
+
+<style>
+  .skip-link { position: fixed; top: -80px; left: 16px; padding: 12px 20px; z-index: 100; background: var(--background); border: 1px solid var(--border); }
+  .skip-link:focus { top: 12px; }
+</style>

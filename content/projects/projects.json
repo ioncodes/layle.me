@@ -1,74 +1,211 @@
 [
   {
-    "id": "gecko",
-    "name": "gecko",
-    "description": "A GameCube and Wii emulator sporting an advanced debugger and Lua scripting with optional support for web browsers.",
+    "id": "sly",
+    "name": "Sly",
+    "description": "A multi-system emulator with a 3D game library, an advanced debugger, and Lua scripting.",
     "language": "Rust",
     "category": "Emulation",
-    "image": "/projects/gecko.png",
+    "url": "https://github.com/ioncodes/sly",
+    "website": "https://sly.layle.dev/",
+    "featured": true,
+    "order": 0,
+    "images": [
+      {
+        "src": "/projects/sly-launcher.webp",
+        "alt": "Sly Launcher displaying Yoshi's Island box art and a SNES cartridge in its 3D game library"
+      },
+      {
+        "src": "/projects/sly-debugger.webp",
+        "alt": "Sly Debugger showing disassembly, memory, and a running SNES game"
+      }
+    ]
+  },
+  {
+    "id": "gecko",
+    "name": "gecko",
+    "description": "A GameCube and Wii emulator with an advanced debugger, Lua scripting, and optional browser support.",
+    "language": "Rust",
+    "category": "Emulation",
     "url": "https://github.com/ioncodes/gecko",
-    "featured": true
+    "featured": true,
+    "order": 1,
+    "images": [
+      {
+        "src": "/projects/gecko-galaxy.webp",
+        "alt": "Super Mario Galaxy 2 title screen running in gecko"
+      },
+      {
+        "src": "/projects/gecko-final-fantasy.webp",
+        "alt": "Final Fantasy Crystal Chronicles: The Crystal Bearers title screen running in gecko"
+      },
+      {
+        "src": "/projects/gecko-debugger.webp",
+        "alt": "Gecko debugger showing CPU, DSP, memory, and hardware registers"
+      }
+    ]
   },
   {
     "id": "ayyboy-advance",
     "name": "ayyboy advance",
-    "description": "A GameBoy Advance emulator with a very advanced CPU and GPU debugger as well as Rhai scripting support.",
+    "description": "A Game Boy Advance emulator with CPU and GPU debugging tools and Rhai scripting support.",
     "language": "Rust",
     "category": "Emulation",
-    "image": "/projects/ayyboy-advance.png",
     "url": "https://github.com/ioncodes/ayyboy-advance",
-    "featured": true
+    "featured": true,
+    "order": 2,
+    "images": [
+      {
+        "src": "/projects/ayyboy-advance.png",
+        "alt": "The ayyboy advance emulator and its debugging interface"
+      }
+    ]
   },
   {
     "id": "pspsps",
     "name": "pspsps",
-    "description": "An experimental PlayStation 1 emulator and debugger, with basic shader support.",
+    "description": "An experimental PlayStation emulator and debugger, with shader support.",
     "language": "Rust",
     "category": "Emulation",
-    "image": "/projects/pspsps.png",
-    "url": "https://github.com/ioncodes/pspsps"
+    "url": "https://github.com/ioncodes/pspsps",
+    "order": 3,
+    "images": [
+      {
+        "src": "/projects/pspsps.png",
+        "alt": "A game running in the pspsps PlayStation emulator"
+      },
+      {
+        "src": "/projects/pspsps-crash.webp",
+        "alt": "Crash Bandicoot title screen running in pspsps"
+      },
+      {
+        "src": "/projects/pspsps-vram.webp",
+        "alt": "Crash Bandicoot graphics and video memory in the pspsps debugger"
+      }
+    ]
   },
   {
     "id": "ayyboy",
     "name": "ayyboy",
-    "description": "A classic GameBoy (DMG) and GameBoy Color (GBC) emulator including a basic debugger.",
+    "description": "A Game Boy and Game Boy Color emulator with a built-in debugger.",
     "language": "Rust",
     "category": "Emulation",
-    "image": "/projects/ayyboy.png",
-    "url": "https://github.com/ioncodes/ayyboy"
+    "url": "https://github.com/ioncodes/ayyboy",
+    "order": 4,
+    "images": [
+      {
+        "src": "/projects/ayyboy.png",
+        "alt": "Link's Awakening DX title screen running in ayyboy"
+      }
+    ]
   },
   {
     "id": "gg",
     "name": "gg",
-    "description": "A GameGear and partial Sega Master System emulator with a built-in debugger.",
+    "description": "A Game Gear emulator with a debugger and partial Master System support.",
     "language": "Rust",
     "category": "Emulation",
-    "image": "/projects/gg.png",
-    "url": "https://github.com/ioncodes/gg"
+    "url": "https://github.com/ioncodes/gg",
+    "order": 5,
+    "images": [
+      {
+        "src": "/projects/gg.png",
+        "alt": "A game dialogue scene running in the gg Game Gear emulator"
+      }
+    ]
+  },
+  {
+    "id": "chipi",
+    "name": "chipi",
+    "description": "Describe an instruction set once. Generate decoders, disassemblers, and dispatchers in Rust, C++, or Python from a small declarative language.",
+    "language": "Rust",
+    "category": "Libraries",
+    "url": "https://github.com/ioncodes/chipi",
+    "order": 6,
+    "images": [],
+    "code": {
+      "language": "rust",
+      "text": "chipi_macros::isa!(\"isa/mips.chipi\");\n\nlet (inst, _len) =\n    Mips::decode(0x0085_1020);\nassert_eq!(inst.opcode_name(), \"add\");\nassert_eq!(inst.rd(), 2);"
+    }
+  },
+  {
+    "id": "chapa",
+    "name": "chapa",
+    "description": "Turn Rust structs into typed bitfields with generated accessors. Supports scattered bits, signed values, nested fields, and enums.",
+    "language": "Rust",
+    "category": "Libraries",
+    "url": "https://github.com/ioncodes/chapa",
+    "order": 7,
+    "images": [],
+    "code": {
+      "language": "rust",
+      "text": "#[bitfield(u8, order = lsb0)]\npub struct StatusReg {\n    #[bits(0)] enabled: bool,\n    #[bits(1..=3)] mode: u8,\n    #[bits(4..=7)] _reserved: u8,\n}"
+    }
+  },
+  {
+    "id": "idacode",
+    "name": "IDACode",
+    "description": "Execute and debug IDAPython scripts inside IDA without leaving Visual Studio Code.",
+    "language": "Python / TypeScript",
+    "category": "Research",
+    "url": "https://github.com/ioncodes/idacode",
+    "order": 8,
+    "images": [
+      {
+        "src": "/projects/idacode.webp",
+        "alt": "IDACode connecting an IDA session with Python scripting in Visual Studio Code"
+      },
+      {
+        "src": "/projects/idacode-commands.webp",
+        "alt": "IDACode commands in the Visual Studio Code command palette"
+      }
+    ]
+  },
+  {
+    "id": "long-night",
+    "name": "long_night",
+    "description": "A dark theme for long reverse engineering sessions, with pastel colors for IDA Pro and Lighthouse.",
+    "language": "Themes",
+    "category": "Research",
+    "url": "https://github.com/ioncodes/long_night",
+    "order": 9,
+    "images": [
+      {
+        "src": "/projects/long-night.webp",
+        "alt": "IDA Pro disassembly graph using the pastel colors of the long_night theme"
+      },
+      {
+        "src": "/projects/long-night-decompilation.webp",
+        "alt": "IDA Pro decompiler using the long_night theme"
+      }
+    ]
   },
   {
     "id": "ceload",
     "name": "ceload",
-    "description": "A Bring Your Own Vulnerable Driver tool that allows you to load dbk64.sys and access a plethora of privileged functions.",
+    "description": "A BYOVD research tool for loading Cheat Engine's dbk64.sys driver and accessing its privileged functions.",
     "language": "C++",
     "category": "Research",
-    "image": "/projects/ceload.png",
-    "url": "https://github.com/ioncodes/ceload"
-  },
-  {
-    "id": "idacode",
-    "name": "idacode",
-    "description": "An integration for HexRay's IDA and VS Code which connects both to easily execute and debug IDAPython scripts.",
-    "language": "Python & TypeScript",
-    "category": "Research",
-    "url": "https://github.com/ioncodes/idacode"
+    "url": "https://github.com/ioncodes/ceload",
+    "order": 10,
+    "images": [
+      {
+        "src": "/projects/ceload.png",
+        "alt": "Ceload source code alongside a demonstration of access through the loaded driver"
+      }
+    ]
   },
   {
     "id": "silentload",
     "name": "SilentLoad",
-    "description": "Loads a driver through NtLoadDriver by setting up the service registry key directly. To be used in engagement for BYOVD, where service creation creates an alert.",
+    "description": "A Windows driver-loading research tool that configures the service registry key directly and calls NtLoadDriver.",
     "language": "C++",
     "category": "Research",
-    "url": "https://github.com/ioncodes/SilentLoad"
+    "url": "https://github.com/ioncodes/SilentLoad",
+    "order": 11,
+    "images": [],
+    "code": {
+      "language": "cpp",
+      "text": "Status = NtLoadDriver(&DriverServiceName);\nif (Status == 0xC000010E)\n{\n    printf(\"Driver already loaded\\n\");\n    return true;\n}"
+    }
   }
 ]

@@ -27,8 +27,17 @@ const projects = defineCollection({
     description: z.string(),
     language: z.string(),
     category: z.string(),
-    image: z.string().optional(),
+    images: z.array(z.object({
+      src: z.string(),
+      alt: z.string(),
+    })).default([]),
+    code: z.object({
+      text: z.string(),
+      language: z.enum(['rust', 'cpp']),
+    }).optional(),
+    order: z.number(),
     url: z.string(),
+    website: z.string().url().optional(),
     featured: z.boolean().optional(),
   })
 });
