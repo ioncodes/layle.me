@@ -15,11 +15,13 @@ interface Props {
   height?: number;
   // Enlarge with sharp pixels, for native-resolution game captures.
   pixelated?: boolean;
+  // Restart both animations together. GIF pairs are detected automatically.
+  animated?: boolean;
 }
-const { before, after, beforeAlt, afterAlt, beforeLabel = 'Before', afterLabel = 'After', comparisonLabel = 'Compare the original and fixed frames', caption, zoom, width = 640, height = 448, pixelated = false } = Astro.props;
+const { before, after, beforeAlt, afterAlt, beforeLabel = 'Before', afterLabel = 'After', comparisonLabel = 'Compare the original and fixed frames', caption, zoom, width = 640, height = 448, pixelated = false, animated = false } = Astro.props;
 ---
 
-<gx-image-comparison class="gx-demo not-prose" data-before-label={beforeLabel} data-after-label={afterLabel} style={zoom ? `--comparison-origin: ${zoom.origin}` : undefined}>
+<gx-image-comparison class="gx-demo not-prose" data-before-label={beforeLabel} data-after-label={afterLabel} data-animated={animated || undefined} style={zoom ? `--comparison-origin: ${zoom.origin}` : undefined}>
   <figure>
     <div class="gx-comparison" data-pixelated={pixelated || undefined}>
       <img src={after} alt={afterAlt} width={width} height={height} loading="lazy" />
@@ -58,10 +60,10 @@ const { before, after, beforeAlt, afterAlt, beforeLabel = 'Before', afterLabel =
       this.syncAnimations();
     }
 
-    // Each GIF starts its own clock when it loads, so restart both together once they're ready.
+    // Each GIF or animated WebP starts its own clock when it loads, so restart both together once they're ready.
     async syncAnimations() {
       const images = [...this.querySelectorAll<HTMLImageElement>('.gx-comparison img')];
-      if (!images.every(image => /\.gif(\?|$)/i.test(image.src))) return;
+      if (this.dataset.animated === undefined && !images.every(image => /\.gif(\?|$)/i.test(image.src))) return;
       try {
         await Promise.all(images.map(image => image.complete ? Promise.resolve() : new Promise(resolve => image.addEventListener('load', resolve, { once: true }))));
         const urls = await Promise.all(images.map(async image => URL.createObjectURL(await (await fetch(image.src)).blob())));

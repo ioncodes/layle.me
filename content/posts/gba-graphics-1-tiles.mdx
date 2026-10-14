@@ -67,7 +67,7 @@ The display control register [`DISPCNT`](https://problemkaputt.de/gbatek-lcd-i-o
   { bits: [13, 15], name: 'Windows on: window 0, window 1, OBJ window' },
 ]} />
 
-Modes 0 to 2 build the screen from tiles, which comes later in this post. Modes 3 to 5 are the [bitmap modes](https://problemkaputt.de/gbatek-lcd-vram-bitmap-bg-modes.htm). A bitmap always appears on background 2, or BG2, so bit 10 has to be set as well:
+Modes 3 to 5 are the [bitmap modes](https://problemkaputt.de/gbatek-lcd-vram-bitmap-bg-modes.htm), like the one OpenLara uses. Modes 0 to 2 build the screen from tiles, which comes later in this post. A bitmap always appears on background 2, or BG2, so bit 10 has to be set as well:
 
 | Mode | Resolution | Bytes per pixel | Pages |
 | --- | --- | ---: | ---: |
@@ -75,13 +75,15 @@ Modes 0 to 2 build the screen from tiles, which comes later in this post. Modes 
 | 4 | 240 × 160 | 1 | 2 |
 | 5 | 160 × 128 | 2 | 2 |
 
+A **page** is one complete picture in VRAM. With 2 pages, a game can display one while it [draws the next frame into the other](#drawing-on-the-hidden-page).
+
 Modes 3 and 5 store a 15-bit color in every pixel, with 5 bits each for red, green and blue. Mode 4 halves the memory by storing a palette index instead. Pick a mode to see how much of VRAM it takes and what it looks like in practice:
 
 <GbaVramMap />
 
-All 3 modes leave the last 16 KiB of VRAM for sprite tiles, which [Part 2](/posts/gba-graphics-2-layers/) covers. A mode 3 image takes 76'800 of the remaining 81'920 bytes, so there's only room for 1 page. In return, every pixel can have its own color. The *Game Boy Advance Video* cartridges play TV episodes this way. The *Fairly OddParents* frame in the mode 3 example uses 1'021 different colors, far more than a 256-entry palette could hold.
+All 3 modes leave the last 16 KiB of VRAM for sprite tiles, which [Part 2](/posts/gba-graphics-2-layers/#tiles-and-palettes) covers. A mode 3 image takes 76'800 of the remaining 81'920 bytes, so there's only room for 1 page. In return, every pixel can have its own color. The *Game Boy Advance Video* cartridges play TV episodes this way. The *Fairly OddParents* frame in the mode 3 example uses 1'021 different colors, far more than a 256-entry palette could hold.
 
-Mode 5 makes a second page fit by shrinking the picture to 160 × 128, whereas mode 4 keeps the full resolution and gives up direct color instead. The mode 5 example is a small test program I wrote that fills a page with a gradient. The rest of the screen shows the backdrop color from palette entry 0. The GBA can stretch the picture to fill the screen with BG2's rotation and scaling registers, which [Part 3](/posts/gba-graphics-3-affine/) covers.
+Mode 5 makes a second page fit by shrinking the picture to 160 × 128, whereas mode 4 keeps the full resolution and gives up direct color instead. The mode 5 example is a small test program I wrote that fills a page with a gradient. The rest of the screen shows the backdrop color from palette entry 0. The GBA can stretch the picture to fill the screen with BG2's rotation and scaling registers, which [Part 3](/posts/gba-graphics-3-affine/#backgrounds-that-rotate) covers.
 
 ## 256 colors from a palette
 
@@ -96,9 +98,9 @@ That byte isn't a color, though. It selects one of the 256 entries in the backgr
 Red sits in the lowest bits, so `0x001f` is pure red and `0x7c00` pure blue:
 
 <BitLayout label="Color" fields={[
-  { bits: [0, 4], name: 'Red' },
-  { bits: [5, 9], name: 'Green' },
-  { bits: [10, 14], name: 'Blue' },
+  { bits: [0, 4], name: 'Red', color: 'red' },
+  { bits: [5, 9], name: 'Green', color: 'green' },
+  { bits: [10, 14], name: 'Blue', color: 'blue' },
   { bits: 15, name: 'Not used', unused: true },
 ]} />
 
@@ -118,9 +120,15 @@ To see it happen, I saved snapshots of the hidden page in Sly between one flip a
 
 The game clears the hidden page to index 0, draws the room, then Lara and finally the FPS counter. `DISPCNT` also has sprites turned off, so the counter really is part of the bitmap. Flipping during **VBLANK**, the pause after the last visible line, keeps the page from changing halfway down the screen.
 
+<FunFact>
+
+If you've worked with Vulkan or similar, this probably sounds familiar. It's called double buffering and a swapchain does the same thing: the game renders into a back buffer while the display shows the front buffer, then presenting swaps them. With vsync on, the driver waits for the vertical blank before switching. On the GBA, the whole swapchain is bit 4 of `DISPCNT` and waiting for VBLANK is up to the game.
+
+</FunFact>
+
 ## Pixels come in pairs
 
-Mode 4 has one catch. A pixel is a single byte, but VRAM can only be written 16 or 32 bits at a time. When a game stores a single byte with `strb` in the background area, the GBA [duplicates it into both halves](https://problemkaputt.de/gbatek-gba-unpredictable-things.htm) of the 16-bit halfword it belongs to. Try writing palette index 3 into a pixel both ways:
+Mode 4 has one catch. A pixel is a single byte, but VRAM can only be written 16 or 32 bits at a time. When a game stores a single byte with `strb` in the background area, the GBA [duplicates it into both halves](https://problemkaputt.de/gbatek-gba-unpredictable-things.htm) of the 16-bit halfword it belongs to. Try writing palette index 3 into a pixel both ways. Each write starts from the same original bytes:
 
 <GbaByteWrite />
 
@@ -147,11 +155,11 @@ fn write_vram(&mut self, mut address: u32, width: Width, value: u32) {
 
 The screen isn't drawn all at once. The GBA takes [1'232 CPU cycles per line and 228 lines per frame](https://problemkaputt.de/gbatek-lcd-dimensions-and-timings.htm): 160 visible lines followed by 68 lines of **VBLANK**. That's 280'896 cycles per frame, or about 59.73 frames per second. The 240 visible pixels take 4 cycles each, but the **HBLANK** flag and interrupt occur later than cycle 960, around cycles 1'006-1'008. `VCOUNT` at `0x04000006` holds the current line. `DISPSTAT` at `0x04000004` can raise an interrupt for HBLANK, VBLANK or a chosen line.
 
-Games use those interrupts to change registers between 2 lines, as do DMA transfers triggered by HBLANK on visible lines. That's how they scroll each line differently or reshape a window. An emulator has to preserve those changes as it draws. Using only the final register values for the whole frame loses these effects. [Part 3](/posts/gba-graphics-3-affine/) looks at a few of them.
+Games use those interrupts to change registers between 2 lines, as do DMA transfers triggered by HBLANK on visible lines. That's how they scroll each line differently or reshape a window. An emulator has to preserve those changes as it draws. Using only the final register values for the whole frame loses these effects. [Part 3](/posts/gba-graphics-3-affine/#a-new-matrix-on-every-line) looks at a few of them.
 
 ## One loop for all 3 modes
 
-Sly handles all 3 bitmap modes with the same rendering path. At the start of each horizontal blank, it looks up the current mode's width, bytes per pixel and displayed page, then converts one row of VRAM into colors. Leaving out the mosaic lookup from [Part 2](/posts/gba-graphics-2-layers/), the loop looks like this:
+Sly handles all 3 bitmap modes with the same rendering path. At the start of each horizontal blank, it looks up the current mode's width, bytes per pixel and displayed page, then converts one row of VRAM into colors. Leaving out the mosaic lookup from [Part 2](/posts/gba-graphics-2-layers/#mosaic), the loop looks like this:
 
 ```rust
 if line >= layout.height {
@@ -222,7 +230,7 @@ Each background has a control register, [`BGxCNT`](https://problemkaputt.de/gbat
   { bits: [14, 15], name: 'Map size' },
 ]} />
 
-Priority and mosaic come up in [Part 2](/posts/gba-graphics-2-layers/), wraparound in [Part 3](/posts/gba-graphics-3-affine/). The ground layer is BG1. Its `BG1CNT` of `0x1e02` gives it priority 2, puts its tiles in block 0 at the very start of VRAM and its map in block 30. With 4 bits per pixel, tile <Math tex="n" /> starts 32 bytes later for each number. Pixel <Math tex="(x, y)" /> of the tile is in the byte at:
+[Priority](/posts/gba-graphics-2-layers/#backgrounds-and-priority) and [mosaic](/posts/gba-graphics-2-layers/#mosaic) come up in Part 2, [wraparound](/posts/gba-graphics-3-affine/#outside-the-background) in Part 3. The ground layer is BG1. Its `BG1CNT` of `0x1e02` gives it priority 2, puts its tiles in block 0 at the very start of VRAM and its map in block 30. With 4 bits per pixel, tile <Math tex="n" /> starts 32 bytes later for each number. Pixel <Math tex="(x, y)" /> of the tile is in the byte at:
 
 <Math block tex={String.raw`\begin{aligned} \text{tile} &= \texttt{0x06000000} \\ &\quad + \text{16'384} \cdot \text{tile block} + 32n \\[0.4em] \text{byte} &= \text{tile} + 4y + \left\lfloor \frac{x}{2} \right\rfloor \end{aligned}`} />
 
@@ -248,7 +256,7 @@ Entries are stored row by row in blocks of 32 × 32, which is exactly 2 KiB. Bit
 | 0 | 256 × 256 | SC0 |
 | 1 | 512 × 256 | SC0 on the left, SC1 on the right |
 | 2 | 256 × 512 | SC0 at the top, SC1 below it |
-| 3 | 512 × 512 | SC0 and SC1 at the top, SC2 and SC3 below them |
+| 3 | 512 × 512 | SC0 top left, SC1 top right, SC2 bottom left, SC3 bottom right |
 
 For the map tile in column <Math tex="t_x" /> and row <Math tex="t_y" /> of a map that's <Math tex="W" /> pixels wide, with its map block <Math tex="M" /> from `BGxCNT`, the entry is this many bytes after the start of VRAM at `0x06000000`:
 
@@ -268,7 +276,7 @@ Click any tile in the map below to decode its entry, or drag the scroll sliders 
 
 <GbaMapViewer />
 
-The renderer repeats this lookup for every pixel. Map sizes are powers of 2, so a mask does the modulo. `text_entry_offset` is the block formula from above. This excerpt leaves out the mosaic lookup from [Part 2](/posts/gba-graphics-2-layers/):
+The renderer repeats this lookup for every pixel. Map sizes are powers of 2, so a mask does the modulo. `text_entry_offset` is the block formula from above. This excerpt leaves out the mosaic lookup from [Part 2](/posts/gba-graphics-2-layers/#mosaic):
 
 ```rust
 let bg_x = (x + bg.hofs as usize) & (width - 1);

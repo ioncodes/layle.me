@@ -14,7 +14,7 @@ type Color =
   | 'slate'
   | 'muted'
   | 'unused';
-type Field = { bits: number | [number, number]; name: string; unused?: boolean };
+type Field = { bits: number | [number, number]; name: string; unused?: boolean; color?: Color };
 type Row = { label?: string; fields: Field[] };
 interface Props {
   label?: string;
@@ -41,7 +41,8 @@ const range = (from: number, to: number) => (from === to ? String(from) : `${fro
 
 // Turns each row into boxes from the highest bit to the lowest, filling unlisted bits with muted boxes.
 const layouts = rows.map(row => {
-  // Every field of a register gets its own color, in the order they're listed. Unused bits are striped.
+  // Every field of a register gets its own color, in the order they're listed, unless it picks one.
+  // Unused bits are striped.
   let next = 0;
   const named = row.fields.map(field => {
     const [from, to] = typeof field.bits === 'number' ? [field.bits, field.bits] : field.bits;
@@ -49,7 +50,9 @@ const layouts = rows.map(row => {
       from,
       to,
       name: field.name,
-      color: field.unused ? ('unused' as Color) : palette[next++ % palette.length],
+      color: field.unused
+        ? ('unused' as Color)
+        : (field.color ?? palette[next++ % palette.length]),
     };
   });
   const boxes: { from: number; to: number; color: Color }[] = [];

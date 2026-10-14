@@ -127,15 +127,38 @@ Shape and size together pick 1 of 12 sizes, in pixels. Shape 3 isn't allowed:
 
 <FunFact>
 
-The hardware only has so much time to draw sprites on each line. The GBA's [sprite drawing budget](https://problemkaputt.de/gbatek-lcd-obj-overview.htm) is 1'210 cycles per line, or 954 if bit 5 of `DISPCNT` frees up HBLANK for OAM access. A regular sprite costs 1 cycle per pixel of its width. With the larger budget, all 128 sprites fit if they're 8 pixels wide. At 64 pixels wide, 18 fit completely, leaving 58 cycles for part of another. Sprites off screen to the side can still use up the budget, so keeping the visible ones at the start of OAM helps them get drawn before time runs out.
+The hardware only has so much time to draw sprites on each line. The GBA's [sprite drawing budget](https://problemkaputt.de/gbatek-lcd-obj-overview.htm) is 1'210 cycles per line, or 954 if bit 5 of `DISPCNT` frees up HBLANK for OAM access. A regular sprite costs 1 cycle per pixel of its width. With the larger budget, all 128 sprites fit if they're 8 pixels wide. At 64 pixels wide, 18 fit completely, leaving 58 cycles for part of another. Once the budget runs out, the hardware stops drawing sprites for the rest of that line: the 19th sprite is cut off partway and every entry after it is missing. Sprites off screen to the side can still use up the budget, so keeping the visible ones at the start of OAM helps them get drawn before time runs out.
 
 </FunFact>
+
+### Tiles and palettes
+
+A sprite's image comes from sprite tile memory, the 32 KiB of VRAM starting at `0x06010000`. Tile numbers count 32-byte units, so tile <Math tex="n" /> starts at <Math tex={String.raw`\texttt{0x06010000} + 32n`} />. The bitmap modes from [Part 1](/posts/gba-graphics-1-tiles/) take the first half of that area, so they only leave tiles 512 to 1023. That's why every sprite on *Action Man*'s mode 3 map uses a tile number of at least 512, whereas the level's sprites start at 0.
+
+All the sprites in these frames use 4 bits per pixel, which fits 2 pixels into each byte and makes a tile exactly 32 bytes. Each 4-bit value selects 1 of 16 colors from the sprite's palette bank, 1 of 16 banks in the sprite palette at `0x05000200`. Value 0 is always transparent, which is how a 32 × 32 square becomes Action Man's round portrait.
+
+A sprite can also use 8 bits per pixel and the whole 256-color sprite palette. Its tiles then take 64 bytes, but tile numbers still count in steps of 32 bytes, so [GBATEK](https://problemkaputt.de/gbatek-lcd-obj-oam-attributes.htm) notes that "only each second tile may be used, the lower bit of the tile number should be zero (in 2-dimensional mapping mode, the bit is completely ignored)".
+
+### Finding the rest of the tiles
+
+OAM only stores the first tile of a sprite, so the hardware needs a rule for where the others are. Bit 6 of `DISPCNT` selects one of 2 layouts:
+
+- With **1D mapping**, a sprite's tiles simply follow each other in memory, row by row.
+- With **2D mapping**, tile memory is treated as a grid 32 tiles wide, so the next row of a sprite starts 32 tile numbers later.
+
+For a 4-bit sprite that's <Math tex="w" /> pixels wide, the tile at column <Math tex={String.raw`t_x`} /> and row <Math tex={String.raw`t_y`} /> is therefore:
+
+<Math block tex={String.raw`\begin{aligned} \text{1D: } & n + t_y \cdot \frac{w}{8} + t_x \\[0.4em] \text{2D: } & n + 32\,t_y + t_x \end{aligned}`} />
+
+With 8 bits per pixel, each tile takes 2 numbers, so the column offset doubles in both layouts. With 1D mapping, the row offset doubles as well. Both *Action Man* frames set bit 6 and use 1D mapping. Switch the demo below to **2D mapping** to see what happens when the 2 disagree: single-row sprites like the letters of "ADVENTURE" on the map are unaffected, while taller sprites read their lower rows from different addresses. The image changes wherever those addresses hold different tile data.
 
 Click a sprite below to decode its entry, or step through them with the arrow keys:
 
 <GbaSpriteInspector />
 
 Larger shapes are often built from several sprites. Action Man himself is 6 sprites in 5 different sizes. The word "ADVENTURE" on the map is 9 separate 8 × 8 sprites placed 5 to 7 pixels apart, so the letters overlap where their tiles are blank. Both E's point at tile 515, because the image only has to be stored once.
+
+### Position and overlap
 
 The Y position only has 8 bits. The health bar is a 64 × 32 sprite at <Math tex="y = 247" />, so its rows continue past 255 and wrap around to the top of the screen. Subtracting on 8-bit values reproduces this wraparound:
 
@@ -158,27 +181,6 @@ When 2 opaque sprite pixels overlap, the [lower priority number](https://github.
 ```rust
 if dst.is_none_or(|pixel| attr.priority() < pixel.priority) {
 ```
-
-### Tiles and palettes
-
-A sprite's image comes from sprite tile memory, the 32 KiB of VRAM starting at `0x06010000`. Tile numbers count 32-byte units, so tile <Math tex="n" /> starts at <Math tex={String.raw`\texttt{0x06010000} + 32n`} />. The bitmap modes from [Part 1](/posts/gba-graphics-1-tiles/) take the first half of that area, so they only leave tiles 512 to 1023. That's why every sprite on *Action Man*'s mode 3 map uses a tile number of at least 512, whereas the level's sprites start at 0.
-
-All the sprites in these frames use 4 bits per pixel, which fits 2 pixels into each byte and makes a tile exactly 32 bytes. Each 4-bit value selects 1 of 16 colors from the sprite's palette bank, 1 of 16 banks in the sprite palette at `0x05000200`. Value 0 is always transparent, which is how a 32 × 32 square becomes Action Man's round portrait.
-
-A sprite can also use 8 bits per pixel and the whole 256-color sprite palette. Its tiles then take 64 bytes, but tile numbers still count in steps of 32 bytes, so [GBATEK](https://problemkaputt.de/gbatek-lcd-obj-oam-attributes.htm) notes that "only each second tile may be used, the lower bit of the tile number should be zero (in 2-dimensional mapping mode, the bit is completely ignored)".
-
-### Finding the rest of the tiles
-
-OAM only stores the first tile of a sprite, so the hardware needs a rule for where the others are. Bit 6 of `DISPCNT` selects one of 2 layouts:
-
-- With **1D mapping**, a sprite's tiles simply follow each other in memory, row by row.
-- With **2D mapping**, tile memory is treated as a grid 32 tiles wide, so the next row of a sprite starts 32 tile numbers later.
-
-For a 4-bit sprite that's <Math tex="w" /> pixels wide, the tile at column <Math tex={String.raw`t_x`} /> and row <Math tex={String.raw`t_y`} /> is therefore:
-
-<Math block tex={String.raw`\begin{aligned} \text{1D: } & n + t_y \cdot \frac{w}{8} + t_x \\[0.4em] \text{2D: } & n + 32\,t_y + t_x \end{aligned}`} />
-
-With 8 bits per pixel, each tile takes 2 numbers, so the column offset doubles in both layouts. With 1D mapping, the row offset doubles as well. Both *Action Man* frames set bit 6 and use 1D mapping. Switch the demo to **2D mapping** to see what happens when the 2 disagree: single-row sprites like the letters are unaffected, while taller sprites read their lower rows from different addresses. The image changes wherever those addresses hold different tile data.
 
 ## Windows
 
@@ -253,6 +255,25 @@ A pixel can be inside several windows at once. The GBA checks window 0 first, th
 
 The third window has no rectangle at all. A sprite whose mode in attribute 0 is set to OBJ window isn't drawn. Instead, every pixel of it that isn't transparent becomes part of the OBJ window. Both bit 12 of `DISPCNT`, for sprite processing, and bit 15, for the OBJ window, must be on. That way, a window can take any shape a sprite can. The high byte of `WINOUT` decides what's visible inside it.
 
+*Fire Emblem*'s title screen uses this to fill its logo with fire. BG0 is a band of flames across the whole width of the screen. To limit it to the logo, the game uses 7 sprites in OBJ window mode that together have the shape of the letters "FIRE EMBLEM". `WINOUT` is `0x313e`. Its low byte shows BG1 to BG3, the sprites and effects outside the windows, but not BG0. Its high byte, `0x31`, shows BG0, the sprites and effects inside the OBJ window. The flames therefore only appear inside the letters, in front of the logo sprites behind them:
+
+<ImageComparison
+  before="/images/gba-bitmap/fire-emblem-title.webp"
+  after="/images/gba-bitmap/fire-emblem-title-no-window.webp"
+  width={240}
+  height={160}
+  pixelated
+  animated
+  beforeLabel="Frame"
+  afterLabel="OBJ window off"
+  comparisonLabel="Compare the title screen with its OBJ window switched off"
+  beforeAlt="The Fire Emblem title screen, with rippling flames inside the letters of the logo."
+  afterAlt="The same title screen with a wide band of rippling flames across the logo and the weapons behind it."
+  caption="Without the OBJ window, BG0's flames cover the whole band instead of just the letters."
+/>
+
+The flames ripple because the game rewrites BG0's scroll registers during HBLANK, changing them every 2 lines. For lines 40 to 99, it also [blends](#blending) BG0 and BG1 with the layers behind them, which is why the weapons show through the flames on the right.
+
 The window checks follow that same order:
 
 ```rust
@@ -317,6 +338,12 @@ The formula translates directly into code:
 ```rust
 (((top_channels[i] * self.eva) + (below_channels[i] * self.evb)) >> 4).min(31)
 ```
+
+<FunFact>
+
+If the room looks a little too yellow, you're not imagining it. *Golden Sun* is apparently known for looking far too bright on modern screens (also called the "piss filter", I just learnt about this myself lol)! The original GBA's LCD had no backlight and made every color look darker and washed out, so games picked bright, saturated palettes to make up for it. The LCD itself was probably not very good as well, though I'm a bit out of my depth with this one. I suppose that's why emulators and even [FPGA recreations](https://github.com/MiSTer-devel/GBA_MiSTer/issues/23) offer color correction that desaturates and darkens the output. The captures in this series use the raw colors, so the room glows a lot more than it did on a GBA back in 2001. I may correct this in the future, perhaps once I implement shader support in Sly!
+
+</FunFact>
 
 Sprites have a shortcut. A sprite whose mode in attribute 0 is set to semi-transparent uses EVA and EVB whenever the layer immediately behind it is a second target, regardless of `BLDCNT`'s first targets and selected effect. It still needs that second target. Overlapping sprites have already been reduced to one sprite pixel before this stage, so they can't be alpha-blended with each other.
 

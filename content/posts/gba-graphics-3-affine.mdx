@@ -60,7 +60,7 @@ The vortex runs in mode 1 with only BG2 and the sprites switched on. Its `BG2CNT
 
 ## From the screen back into the background
 
-The obvious way to rotate a picture is to take each of its pixels and work out where it lands on the screen. The GBA does the opposite. It draws the screen pixel by pixel like every other layer. For each pixel, it asks which texel of the background belongs there. Going this way round leaves no gaps: every screen pixel gets exactly one texel, however the background is turned or stretched.
+The obvious way to rotate a picture is to take each of its pixels and work out where it lands on the screen. The GBA does the opposite. It draws the screen pixel by pixel like every other layer. For each pixel, it asks which texel of the background belongs there. Going this way round leaves no gaps: every screen pixel gets exactly one texel, however the background is turned or stretched. It also keeps the work fixed. Each line takes exactly 240 lookups, however large the background is or however far it's shrunk. Moving on to the next pixel only takes an addition, as the registers below show.
 
 The question is answered with 6 registers for each affine background. The **reference point** `BGxX` and `BGxY` is the position in the background that the top left pixel of the screen shows. From there, each step to the right adds `PA` across and `PC` down through the background, in units of 1/256 of a texel. Each step down to the next line adds `PB` across and `PD` down in the same units. With constant registers and mosaic off, screen pixel <Math tex="(x, y)" /> therefore shows the background at:
 
@@ -308,4 +308,6 @@ The tricky part for an emulator is timing. Games like *F-Zero* depend on registe
 
 ## Thank you
 
-A big thank you to my friend [Pdawg](Pdawg-bytes) for reviewing all 3 parts of this series! He's a fellow emulator developer and a very bright mind, I strongly encourage you to check out his work and drop him a follow :)
+A big thank you to my friend [Pdawg](https://github.com/Pdawg-bytes) for reviewing all 3 parts of this series! He's a fellow emulator developer and a very bright mind, I strongly encourage you to check out his work and drop him a follow :)
+
+Another big thank you to Zayd for reviewing the series and giving me valuable feedback. He's the creator of [beanwii](https://github.com/zaydlang/beanwii) and also makes some really cool videos about emulation on [his YouTube channel](https://www.youtube.com/@beanulation1). If you enjoyed this series, go check them out!

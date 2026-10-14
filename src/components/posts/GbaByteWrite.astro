@@ -35,7 +35,6 @@ const start = [1, 1, 2, 2, 1, 1, 2, 2];
     <span class="byte-prompt">Write <code>0x03</code> with</span>
     <button type="button" data-write="byte"><code>strb</code></button>
     <button type="button" data-write="halfword"><code>ldrh</code> + <code>strh</code></button>
-    <button type="button" class="byte-reset" data-reset>Reset</button>
   </fieldset>
   <p class="gx-demo-status" data-result aria-live="polite">Pick a pixel, then write palette index 3 to it.</p>
 </gx-gba-byte-write>
@@ -62,10 +61,12 @@ const start = [1, 1, 2, 2, 1, 1, 2, 2];
 
       const halfword = (address: number) => bytes[address & ~1] | (bytes[address | 1] << 8);
 
+      // Every write starts from the original bytes, so the 2 instructions can be compared directly.
       const write = (mode: string) => {
         const address = 0x06000000 + target;
         const even = target & ~1;
-        const before = [...bytes];
+        const before = [...START];
+        bytes = [...START];
         let text: string;
 
         if (mode === 'byte') {
@@ -85,19 +86,15 @@ const start = [1, 1, 2, 2, 1, 1, 2, 2];
       this.querySelectorAll<HTMLButtonElement>('[data-pixel]').forEach(pixel => {
         pixel.onclick = () => {
           target = Number(pixel.dataset.pixel);
+          bytes = [...START];
           render();
+          this.querySelector('[data-result]')!.textContent = 'Pick a pixel, then write palette index 3 to it.';
         };
       });
 
       this.querySelectorAll<HTMLButtonElement>('[data-write]').forEach(
         button => (button.onclick = () => write(button.dataset.write!)),
       );
-
-      this.querySelector<HTMLButtonElement>('[data-reset]')!.onclick = () => {
-        bytes = [...START];
-        render();
-        this.querySelector('[data-result]')!.textContent = 'Pick a pixel, then write palette index 3 to it.';
-      };
 
       this.querySelector('fieldset')!.disabled = false;
       render();
@@ -200,12 +197,6 @@ const start = [1, 1, 2, 2, 1, 1, 2, 2];
 
   .byte-actions code {
     font-size: 0.8rem;
-  }
-
-  .gx-demo .byte-reset {
-    margin-left: auto;
-    border-color: transparent;
-    color: var(--muted-foreground);
   }
 
   @media (max-width: 480px) {
